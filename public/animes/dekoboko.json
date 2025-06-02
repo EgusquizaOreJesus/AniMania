@@ -1,0 +1,77 @@
+{
+  "id": 1,
+  "episodes": [
+    {
+      "number": 1,
+      "title": "El nacimiento de una bruja torpe",
+      "image": "/images/portada_caps.jpg",
+      "description": "Fuyu descubre sus poderes mágicos mientras causa caos accidentalmente."
+    },
+    {
+      "number": 2,
+      "title": "Primer día de escuela",
+      "image": "/images/portada_caps.jpg",
+      "description": "Fuyu asiste a la escuela de magia donde sus poderes descontrolados causan problemas."
+    },
+    {
+      "number": 3,
+      "title": "La fiesta de cumpleaños",
+      "image": "/images/portada_caps.jpg",
+      "description": "Fuyu intenta organizar una fiesta de cumpleaños para su hija, pero las cosas no salen como planeaba."
+    },
+    {
+      "number": 4,
+      "title": "El hechizo fallido",
+      "image": "/images/portada_caps.jpg",
+      "description": "Un hechizo para ayudar a su hija sale mal, causando situaciones cómicas."
+    },
+    {
+      "number": 5,
+      "title": "La visita del abuelo",
+      "image": "/images/portada_caps.jpg",
+      "description": "El abuelo de Fuyu llega de visita y trae consigo más caos mágico."
+    },
+    {
+      "number": 6,
+      "title": "El torneo de magia",
+      "image": "/images/portada_caps.jpg",
+      "description": "Fuyu participa en un torneo de magia, pero sus hechizos descontrolados la ponen en problemas."
+    },
+    {
+      "number": 7,
+      "title": "La aventura en el bosque",
+      "image": "/images/portada_caps.jpg",
+      "description": "Fuyu y su hija se pierden en el bosque y deben encontrar el camino a casa."
+    },
+    {
+      "number": 8,
+      "title": "El día de spa mágico",
+      "image": "/images/portada_caps.jpg",
+      "description": "Fuyu intenta relajarse en un spa mágico, pero las cosas no salen como esperaba."
+    },
+    {
+      "number": 9,
+      "title": "La competencia de cocina mágica",
+      "image": "/images/portada_caps.jpg",
+      "description": "Fuyu participa en una competencia de cocina mágica que termina en desastre."
+    },
+    {
+      "number": 10,
+      "title": "El hechizo del amor",
+      "image": "/images/portada_caps.jpg",
+      "description": "Fuyu intenta usar un hechizo del amor para ayudar a su hija, pero las cosas se complican."
+    },
+    {
+      "number": 11,
+      "title": "El festival de magia",
+      "image": "/images/portada_caps.jpg",
+      "description": "Fuyu y su hija disfrutan de un festival de magia lleno de sorpresas y caos."
+    },
+    {
+      "number": 12,
+      "title": "El final feliz",
+      "image": "/images/portada_caps.jpg",
+      "description": "Fuyu y su hija reflexionan sobre sus aventuras y celebran su vínculo especial."
+    }
+  ]
+}

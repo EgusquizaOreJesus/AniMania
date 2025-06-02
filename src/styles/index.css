@@ -1,0 +1,17 @@
+
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+#root { /* Estilo para el div principal de React */
+    width: 100%; /* Haz que #root intente ocupar el 100% del body */
+    /* max-width: 2000px; /* Opcional: puedes poner un max-width aquí también si quieres */
+    display: flex; /* Usamos flex para centrar .container dentro de #root */
+    justify-content: center;
+    align-items: center; /* Si quieres centrar verticalmente el container dentro de #root */
+                         /* O podrías quitar align-items:center y dejar que el container ocupe altura normal */
+}

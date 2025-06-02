@@ -1,0 +1,496 @@
+* {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1400px;
+            padding: 20px;
+        }
+        
+        .title {
+            text-align: center;
+            margin-bottom: 25px;
+            font-size: 2.5rem;
+            font-weight: 800;
+            text-shadow: 0 2px 15px rgba(0, 0, 0, 0.8);
+            position: relative;
+            padding-bottom: 15px;
+        }
+        
+        .title span {
+            color: #9C27B0;
+            position: relative;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .title span::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: #9C27B0;
+            border-radius: 2px;
+        }
+        
+        .player-container {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%; /* Aspect ratio 16:9 */
+            border-radius: 10px;
+            overflow: hidden;
+            transform: perspective(1000px) rotateX(1deg);
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+        }
+        
+        #video-player {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            cursor: pointer;
+            transition: filter 0.3s;
+        }
+        
+        .player-container.video-blur #video-player {
+            filter: blur(5px);
+        }
+        
+        .controls-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+            padding: 15px 25px;
+            opacity: 1;
+            transition: opacity 0.3s ease;
+        }
+        .controls-container.hide-controls { /* Esta es la regla clave */
+            opacity: 0;
+            pointer-events: none; /* Para que no se pueda interactuar cuando está oculto */
+            cursor: none; /* Oculta el cursor cuando los controles están ocultos */
+        }
+        .player-container.hide-controls .controls-container {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            margin-bottom: 15px;
+            border-radius: 3px;
+            cursor: pointer;
+            position: relative;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: #9C27B0;
+            border-radius: 3px;
+            width: 0%;
+            position: relative;
+            transition: width 0.1s linear;
+        }
+        
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            background: #fff;
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .progress-container:hover .progress-bar::after {
+            opacity: 1;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .left-controls, .right-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .control-btn {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 1.4rem;
+            cursor: pointer;
+            opacity: 0.85;
+            transition: all 0.2s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+        
+        .control-btn:hover {
+            opacity: 1;
+            transform: scale(1.15);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .volume-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .volume-slider {
+            width: 100px;
+            -webkit-appearance: none;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .volume-slider:hover {
+            height: 6px;
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 8px rgba(229, 9, 20, 0.5);
+        }
+        
+        .volume-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #9C27B0;
+        }
+        
+        .time-display {
+            color: #fff;
+            font-size: 1rem;
+            opacity: 0.9;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 5px 12px;
+            border-radius: 20px;
+            min-width: 110px;
+            text-align: center;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 25px 40px;
+            border-radius: 15px;
+            backdrop-filter: blur(5px);
+            text-align: center;
+        }
+        
+        .quality-loading {
+            display: none;
+        }
+        
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(156, 39, 176, 0.2); /* Borde púrpura transparente */
+            border-top: 5px solid #9C27B0; /* Antes #e50914 */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #e50914;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 80%;
+            display: none;
+            z-index: 30;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(229, 9, 20, 0.3);
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .settings-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .settings-btn {
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .settings-btn:hover {
+            background: rgba(50, 50, 50, 0.7);
+            border-color: rgba(156, 39, 176, 0.5); /* Borde púrpura transparente */
+            transform: scale(1.15);
+        }
+        
+        .settings-options {
+            position: absolute;
+            bottom: 100%; /* Ajustado para que aparezca encima del botón */
+            right: 0;
+            background: rgba(20, 20, 20, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            min-width: 180px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            display: none;
+            z-index: 40;
+            backdrop-filter: blur(5px);
+            margin-bottom: 10px; /* Espacio entre el botón y el menú */
+        }
+        
+        .settings-options.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .settings-section {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .settings-section:last-child {
+            border-bottom: none;
+        }
+        
+        .settings-section-title {
+            padding: 8px 20px;
+            font-size: 0.9rem;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .settings-section-title i.fa-chevron-right { /* Estilo específico para el chevron */
+            transition: transform 0.3s ease;
+        }
+        
+        .settings-section-title.expanded i.fa-chevron-right { /* Estilo específico para el chevron */
+            transform: rotate(90deg);
+        }
+        
+        .settings-options-container {
+            max-height: 0;
+            overflow-y: auto; /* Permitir scroll si hay muchas opciones */
+            transition: max-height 0.3s ease-out; /* Usar ease-out para la animación de cierre */
+        }
+        
+        .settings-options-container.show {
+            max-height: 150px; /* Altura máxima para las opciones, ajustar según necesidad */
+        }
+        
+        .settings-option {
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .settings-option:hover {
+            background: rgba(156, 39, 176, 0.3); /* Fondo púrpura transparente */
+        }
+        
+        .settings-option i.fa-check { /* Estilo específico para el checkmark */
+            color: #9C27B0; /* Antes #e50914 */
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+            width: 16px;
+            text-align: center;
+        }
+        
+        .settings-option.selected i.fa-check { /* Estilo específico para el checkmark */
+            opacity: 1;
+        }
+        
+        .settings-option.selected {
+            background: rgba(156, 39, 176, 0.2); /* Fondo púrpura transparente */
+        }
+        
+        .play-pause-animation {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 6rem;
+            color: rgba(255, 255, 255, 0.8);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 5;
+            animation: fadeIcon 0.8s ease;
+        }
+        
+        @keyframes fadeIcon {
+            0% {
+                opacity: 0.8;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(1.5);
+            }
+        }
+        
+        .netflix-logo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #e50914;
+            font-size: 2.5rem;
+            font-weight: 900;
+            z-index: 5;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        .shortcuts-info {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 20px;
+            border-radius: 30px;
+            color: #aaa;
+            font-size: 0.9rem;
+            display: none;
+            z-index: 25;
+            backdrop-filter: blur(5px);
+        }
+        
+        .player-container:hover .shortcuts-info {
+            display: block;
+        }
+        .player-logo-image {
+            position: absolute;
+            top: 15px;       /* Ajusta la posición vertical */
+            left: 20px;      /* Ajusta la posición horizontal */
+            height: 90px;    /* Alto deseado, o usa solo width y 'auto' para mantener proporción */
+                            /* O viceversa: height: 40px; width: auto; */
+            object-fit: contain; /* 'contain' asegura que toda la imagen quepa sin cortarse,
+                                    'cover' llenaría el espacio, recortando si es necesario. */
+            z-index: 5;
+            /* Puedes quitar la animación 'pulse' o mantenerla si te gusta */
+            /* animation: pulse 2s infinite; */
+
+            /* Opcional: una sombra suave para la imagen */
+            /* filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5)); */
+        }
+        .shortcuts-info span {
+            background: rgba(156, 39, 176, 0.2); /* Fondo púrpura transparente */
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin: 0 3px;
+        }
+        
+        @media (max-width: 900px) {
+            .title {
+                font-size: 1.8rem;
+            }
+            
+            .volume-slider {
+                width: 70px;
+            }
+            
+            .control-btn {
+                font-size: 1.2rem;
+                width: 35px;
+                height: 35px;
+            }
+            
+            .time-display {
+                font-size: 0.85rem;
+                padding: 4px 10px;
+            }
+            
+            .netflix-logo {
+                font-size: 2rem;
+            }
+            
+            .settings-options {
+                min-width: 160px;
+            }
+        }
