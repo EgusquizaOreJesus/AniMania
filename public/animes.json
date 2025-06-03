@@ -6,5 +6,13 @@
     "image": "/images/dekoboko.jpg",
     "description": "Una bruja torpe y su hija mitad humana viven divertidas aventuras.",
     "episodes": 12
+  },
+  {
+    "id": 2,
+    "slug": "Atri",
+    "title": "Atri: My Dear Moments",
+    "image": "/images/Atri.jpg",
+    "description": "En un mundo donde la humanidad ha sido casi aniquilada, un joven encuentra a Atri, una IA que lo ayuda a sobrevivir.",
+    "episodes": 13
   }
 ]

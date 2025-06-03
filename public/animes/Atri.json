@@ -1,0 +1,12 @@
+{
+    "id": 2,
+    "episodes": [
+        {
+            "number": 1,
+            "title": "El despertar de Atri",
+            "image": "/images/portada_caps.jpg",
+            "description": "Atri, una IA avanzada, despierta en un mundo devastado y comienza su búsqueda de propósito."
+        }
+
+    ]
+}
