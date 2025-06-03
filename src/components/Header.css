@@ -63,7 +63,5 @@
 
 .app-header {
     width: 100%;
-  background-size: 100%, 200% 100%;
-  animation: shimmer 8s infinite linear;
 }
 

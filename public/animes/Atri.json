@@ -6,6 +6,79 @@
             "title": "El despertar de Atri",
             "image": "/images/portada_caps.jpg",
             "description": "Atri, una IA avanzada, despierta en un mundo devastado y comienza su búsqueda de propósito."
+        },
+        {
+            "number": 2,
+            "title": "Contemplamos un paisaje cálido",
+            "image": "/images/portada_caps.jpg",
+            "description": "Pese a que Natsuki le ordenó marcharse con Catherine, Atri aparece junto a su cama de nuevo. La humanoide intenta ayudarlo de todas las formas posibles, aunque demuestra que no es tal altamente eficiente como profesa."
+        }
+        ,
+        {
+            "number": 3,
+            "title": "Escuela de sicarios y alfeñiques",
+            "image": "/images/portada_caps.jpg",
+            "description": "Natsuki va a la escuela acompañado de su amiga y de Atri, y aunque está está mayormente sumergida, logran entrar. Lo que no esperaban es que allí hubiera personas."
+        },
+        {
+            "number": 4,
+            "title": "Los cangrejos y la electricidad son importantes",
+            "image": "/images/portada_caps.jpg",
+            "description": "Decidido a construir un generador de energía mareomotriz utilizando las mareas, Natsuo volvió a sumergirse en el mar para buscar materiales."
+        },
+        {
+            "number": 5,
+            "title": "Sonríe bajo las luces nocturnas",
+            "image": "/images/portada_caps.jpg",
+            "description": "El barco de Natsuki sufre el ataque de unos hombres que quieren a Atri. ¿Podrán salir ilesos de este y lograr generar energía finalmente?"
+        },
+        {
+            "number": 6,
+            "title": "La canción en mi cabeza",
+            "image": "/images/portada_caps.jpg",
+            "description": "Con la escuela funcionando de nuevo, llegan más estudiantes. Eso hace que los amigos de Natsuki se interesen por la vida amorosa del joven, lo que destapará un recuerdo inesperado."
+        },
+        {
+            "number": 7,
+            "title": "Cita con la robotita",
+            "image": "/images/portada_caps.jpg",
+            "description": "Natsuki sigue intentando descifrar si Atri tiene un corazón humano o no. Pasa a la acción con ayuda de Catherine, quien empieza a enseñar a Atri sobre el amor."
+        },
+        {
+            "number": 8,
+            "title": "La noche llega con las olas",
+            "image": "/images/portada_caps.jpg",
+            "description": "Natsuki intenta aclararse y discernir qué siente realmente por Atri. Sus amigos y el diario de Atri influirán en su respuesta."
+        },
+        {
+            "number": 9,
+            "title": "La pierna que cae por el abismo",
+            "image": "/images/portada_caps.jpg",
+            "description": "Natsuki desespera al leer el diario de Atri y le ordena dejar de fingir tener corazón. Justo cuando se distancia de ella aparece Yasuda, quien le pide ayuda para atrapar a la única humanoide de cuarta generación que queda suelta."
+        },
+        {
+            "number": 10,
+            "title": "La lluvia acaba amainando",
+            "image": "/images/portada_caps.jpg",
+            "description": "Tras la discusión con Natsuki y la pelea contra Yasuda, Atri lo recuerda todo sobre su antigua dueña Shiina, quien tenía una estrecha relación con Natsuki."
+        },
+        {  
+            "number": 11,
+            "title": "El final del verano y el sonido de tu voz",
+            "image": "/images/portada_caps.jpg",
+            "description": "Natsuki ha tomado una decisión importante y se lo cuenta a los demás en la escuela. Pero cuando Atri tiene problemas, tendrán que colaborar, y rápido."
+        },
+        {  
+            "number": 12,
+            "title": "Boleto hacia la tierra prometida",
+            "image": "/images/portada_caps.jpg",
+            "description": "Natsuki y toda la pandilla empiezan a buscar el misterioso Eden al que Atri debe dirigirse. No tienen ninguna pista, pero Natsuki está convencido de que su abuela no los engañaría con algo así."
+        },
+        {
+            "number": 13,
+            "title": "Que se detenga el tiempo, eres preciosa",
+            "image": "/images/portada_caps.jpg",
+            "description": "Natsuki debe afrontar la decisión que tome Atri, aunque rascará cada segundo que pueda para intentar salvar a la humanoide con corazón."
         }
 
     ]
