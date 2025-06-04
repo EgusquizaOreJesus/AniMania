@@ -217,22 +217,8 @@ useEffect(() => {
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !videoUrl) return;
-    if (video.canPlayType('application/vnd.apple.mpegurl')){
-          video.src = videoUrl; // Use the videoUrl prop directly
-          video.addEventListener('loadedmetadata', () => {
-            setIsMainLoading(false);
-            // Native HLS might not expose quality/audio track selection easily
-            // Consider hiding these options for Safari native HLS
-            console.warn("Reproducción HLS nativa. Selección de calidad/audio limitada.");
-            setAvailableQualities([]); // Hide quality options
-            setAvailableAudioTracks([]); // Hide audio options
-          });
-          video.addEventListener('error', () => {
-            setShowError(true);
-            setIsMainLoading(false);
-          });
-    }
-    else if (Hls.isSupported()) {
+
+    if (Hls.isSupported()) {
       const hls = new Hls({
         autoStartLoad: true,
         maxBufferLength: 30,
@@ -287,6 +273,20 @@ useEffect(() => {
         }
       });
 
+    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = videoUrl; // Use the videoUrl prop directly
+      video.addEventListener('loadedmetadata', () => {
+        setIsMainLoading(false);
+        // Native HLS might not expose quality/audio track selection easily
+        // Consider hiding these options for Safari native HLS
+        console.warn("Reproducción HLS nativa. Selección de calidad/audio limitada.");
+        setAvailableQualities([]); // Hide quality options
+        setAvailableAudioTracks([]); // Hide audio options
+      });
+      video.addEventListener('error', () => {
+         setShowError(true);
+         setIsMainLoading(false);
+      });
     } else {
       setShowError(true);
       setIsMainLoading(false);
