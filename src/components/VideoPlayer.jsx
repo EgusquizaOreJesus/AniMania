@@ -6,6 +6,11 @@ import Controls from './Controls';
 import PlayPauseAnimation from './PlayPauseAnimation';
 
 
+const isIOS = () => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+};
+
+
 const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
   const videoRef = useRef(null);
   const playerContainerRef = useRef(null);
@@ -34,7 +39,9 @@ const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
   const [currentSubtitleTrack, setCurrentSubtitleTrack] = useState(-1); // -1 for off, index for specific track
 
   const [playPauseAnim, setPlayPauseAnim] = useState({ icon: '', trigger: 0 });
-
+  const [touchStartX, setTouchStartX] = useState(0);
+  const [touchStartTime, setTouchStartTime] = useState(0);
+  const [touchTimeout, setTouchTimeout] = useState(null);
 
   const createPlayPauseAnimation = useCallback((icon) => {
      setPlayPauseAnim(prev => ({ icon, trigger: prev.trigger + 1 }));
@@ -382,8 +389,11 @@ useEffect(() => {
   useEffect(() => {
      const container = playerContainerRef.current;
      const handleFullscreenChange = () => {
-         setIsScreenFull(!!document.fullscreenElement);
-         // Update button icon if needed (handled in Controls component based on isScreenFull prop)
+         setIsScreenFull(
+           !!document.fullscreenElement || 
+           !!document.webkitFullscreenElement ||
+           !!document.webkitCurrentFullScreenElement
+         );
      };
 
      document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -502,9 +512,19 @@ useEffect(() => {
   };
 
   const handleFullscreenToggle = () => {
+      const video = videoRef.current;
      const elem = playerContainerRef.current;
-     if (!elem) return;
-
+     if (!elem || !video) return;
+     // Manejo específico para iOS
+     if (isIOS()) {
+         if (video.webkitDisplayingFullscreen) {
+             video.webkitExitFullscreen();
+         } else {
+             video.webkitEnterFullscreen();
+         }
+         resetInactivityTimer();
+         return;
+     }
      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
          if (elem.requestFullscreen) {
              elem.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message}`));
@@ -574,25 +594,69 @@ useEffect(() => {
          });
      }
   }, [isPlaying, resetInactivityTimer, showSettings]);
+  // Añadir soporte para gestos táctiles
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      setTouchStartX(e.touches[0].clientX);
+      setTouchStartTime(Date.now());
+      
+      // Mostrar controles al tocar
+      setShowControls(true);
+      clearTimeout(inactivityTimerRef.current);
+      resetInactivityTimer();
+    }
+  };
 
+  const handleTouchEnd = (e) => {
+    if (e.changedTouches.length === 1) {
+      const touchEndX = e.changedTouches[0].clientX;
+      const deltaX = touchEndX - touchStartX;
+      const timeDelta = Date.now() - touchStartTime;
+      
+      // Manejar deslizamientos rápidos (avance/retroceso)
+      if (Math.abs(deltaX) > 50 && timeDelta < 300) {
+        if (deltaX > 0) {
+          handleRewind();
+        } else {
+          handleForward();
+        }
+      }
+      
+      // Manejar toques simples (play/pausa)
+      else if (Math.abs(deltaX) < 10 && timeDelta < 300) {
+        handlePlayPause();
+      }
+    }
+  };
+
+  // Modificar el evento de clic para soportar toques
+  const handleContainerClick = (e) => {
+    // Evitar toggle de play/pause cuando se tocan los controles
+    if (e.target.closest('.controls-container') || 
+        e.target.closest('.settings-options') ||
+        showSettings) {
+      resetInactivityTimer();
+      return;
+    }
+    
+    // En móviles, manejamos play/pause con gestos
+    if (!isIOS()) {
+      handlePlayPause();
+    }
+  };
 
   return (
     <div
       className={`player-container ${isQualityLoading ? 'video-blur' : ''}`}
       id="player-container"
       ref={playerContainerRef}
-      onClick={(e) => {
-         // Allow clicks on controls without toggling play/pause
-         if (e.target.closest('.controls-container') || e.target.closest('.settings-options')) {
-             resetInactivityTimer(); // Keep controls visible if interacting with them
-             return;
-         }
-         handlePlayPause();
-      }}
+      onClick={handleContainerClick}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
     >
       <img src={logo2} alt="Anime Logo" className="player-logo-image" />
 
-      <video id="video-player" ref={videoRef} crossOrigin="anonymous">
+      <video id="video-player" ref={videoRef} crossOrigin="anonymous" playsInline webkit-playsinline="true">
         {/* Subtitle tracks are now added programmatically in useEffect */}
       </video>
 
