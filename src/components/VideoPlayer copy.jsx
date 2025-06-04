@@ -6,6 +6,11 @@ import Controls from './Controls';
 import PlayPauseAnimation from './PlayPauseAnimation';
 
 
+const isIOS = () => {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+};
+
+
 const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
   const videoRef = useRef(null);
   const playerContainerRef = useRef(null);
@@ -34,8 +39,11 @@ const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
   const [currentSubtitleTrack, setCurrentSubtitleTrack] = useState(-1); // -1 for off, index for specific track
 
   const [playPauseAnim, setPlayPauseAnim] = useState({ icon: '', trigger: 0 });
-
-
+  const [touchStartX, setTouchStartX] = useState(0);
+  const [touchStartTime, setTouchStartTime] = useState(0);
+  const [touchTimeout, setTouchTimeout] = useState(null);
+    // Nuevo estado para controlar si el video está listo
+  const [isVideoReady, setIsVideoReady] = useState(false);  
   const createPlayPauseAnimation = useCallback((icon) => {
      setPlayPauseAnim(prev => ({ icon, trigger: prev.trigger + 1 }));
   }, []);
@@ -56,8 +64,10 @@ const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
 
 useEffect(() => {
     const video = videoRef.current;
-    if (!video || !subtitleTracksConfig) return; // Añadimos verificación de videoUrl
-
+   if (!video || !videoUrl || !subtitleTracksConfig) {
+        setAvailableSubtitleTracks([]); // Limpiar si no hay config o video
+        return;
+    }
     const hls = hlsRef.current;
 
     // Función para actualizar la lista de subtítulos disponibles en la UI
@@ -216,9 +226,68 @@ useEffect(() => {
   // HLS.js setup
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !videoUrl) return;
+    // Si no hay videoUrl, limpiamos HLS y estados, y no hacemos nada más.
+    if (!video || !videoUrl) {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+      setIsMainLoading(false);
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+      setAvailableQualities([]);
+      setAvailableAudioTracks([]);
+      // No necesitamos limpiar availableSubtitleTracks aquí, el siguiente useEffect lo hará.
+      setShowError(false);
+      return;
+    }
+    // Cuando videoUrl cambia, mostramos el loading principal y reseteamos errores.
+    setIsMainLoading(true);
+    setShowError(false);
+    // También reseteamos algunos estados del video anterior.
+    setCurrentTime(0);
+    setDuration(0);
+    setIsPlaying(false); // Importante para que no intente auto-play en un estado inconsistente
+    setIsVideoReady(false); // Resetear estado de preparación
 
-    if (Hls.isSupported()) {
+    // Destruir instancia anterior de HLS si existe
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+        // 2. Manejo específico para iOS
+    if (isIOS()) {
+      // iOS tiene soporte nativo HLS, no necesitamos hls.js
+      video.src = videoUrl;
+      
+      const handleLoadedData = () => {
+        setIsMainLoading(false);
+        setIsVideoReady(true);
+      };
+
+      const handleCanPlay = () => {
+        setIsMainLoading(false);
+        setIsVideoReady(true);
+      };
+
+      const handleError = () => {
+        setShowError(true);
+        setIsMainLoading(false);
+        setIsVideoReady(false);
+      };
+
+      video.addEventListener('loadeddata', handleLoadedData);
+      video.addEventListener('canplay', handleCanPlay);
+      video.addEventListener('error', handleError);
+
+      return () => {
+        video.removeEventListener('loadeddata', handleLoadedData);
+        video.removeEventListener('canplay', handleCanPlay);
+        video.removeEventListener('error', handleError);
+      };
+    } 
+    else if (Hls.isSupported()) {
       const hls = new Hls({
         autoStartLoad: true,
         maxBufferLength: 30,
@@ -231,6 +300,7 @@ useEffect(() => {
 
       hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
         setIsMainLoading(false);
+        setIsVideoReady(true);
         setAvailableQualities(data.levels || []);
         if (data.levels && data.levels.length > 0) setCurrentQuality(hls.currentLevel); // Or -1 for auto by default
 
@@ -269,6 +339,7 @@ useEffect(() => {
           setShowError(true);
           setIsMainLoading(false);
           setIsQualityLoading(false);
+          setIsVideoReady(false);
           // More specific error messages can be set here based on data.type / data.details
         }
       });
@@ -283,25 +354,52 @@ useEffect(() => {
         setAvailableQualities([]); // Hide quality options
         setAvailableAudioTracks([]); // Hide audio options
       });
-      video.addEventListener('error', () => {
-         setShowError(true);
-         setIsMainLoading(false);
-      });
+      const onErrorNative = () => {
+        setShowError(true);
+        setIsMainLoading(false);
+      };
+      video.addEventListener('loadedmetadata', onLoadedMetadataNative);
+      video.addEventListener('error', onErrorNative);
+      // Limpieza para listeners nativos
+      return () => {
+        video.removeEventListener('loadedmetadata', onLoadedMetadataNative);
+        video.removeEventListener('error', onErrorNative);
+        if (hlsRef.current) { // Aunque no se usó HLS.js, por si acaso
+          hlsRef.current.destroy();
+          hlsRef.current = null;
+        }
+      }
     } else {
       setShowError(true);
       setIsMainLoading(false);
+      setIsVideoReady(false);
       setErrorMessage({title: "Error de compatibilidad", text: "Su navegador no soporta la reproducción de video HLS."})
     }
 
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
+        hlsRef.current = null;
       }
       clearTimeout(inactivityTimerRef.current);
     };
   }, [videoUrl]);
 
+  // 4. Forzar la visualización de controles en iOS al cargar
+  useEffect(() => {
+    if (isIOS() && isVideoReady) {
+      setShowControls(true);
+      resetInactivityTimer();
+    }
+  }, [isVideoReady]);
 
+    // 5. Manejar la visibilidad del contenedor
+  const getContainerStyle = () => {
+    if (isIOS() && !isVideoReady) {
+      return { display: 'none' };
+    }
+    return {};
+  };
   // Video Element Event Listeners
   useEffect(() => {
     const video = videoRef.current;
@@ -341,8 +439,11 @@ useEffect(() => {
   useEffect(() => {
      const container = playerContainerRef.current;
      const handleFullscreenChange = () => {
-         setIsScreenFull(!!document.fullscreenElement);
-         // Update button icon if needed (handled in Controls component based on isScreenFull prop)
+         setIsScreenFull(
+           !!document.fullscreenElement || 
+           !!document.webkitFullscreenElement ||
+           !!document.webkitCurrentFullScreenElement
+         );
      };
 
      document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -461,9 +562,19 @@ useEffect(() => {
   };
 
   const handleFullscreenToggle = () => {
+      const video = videoRef.current;
      const elem = playerContainerRef.current;
-     if (!elem) return;
-
+     if (!elem || !video) return;
+     // Manejo específico para iOS
+     if (isIOS()) {
+         if (video.webkitDisplayingFullscreen) {
+             video.webkitExitFullscreen();
+         } else {
+             video.webkitEnterFullscreen();
+         }
+         resetInactivityTimer();
+         return;
+     }
      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
          if (elem.requestFullscreen) {
              elem.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message}`));
@@ -533,29 +644,74 @@ useEffect(() => {
          });
      }
   }, [isPlaying, resetInactivityTimer, showSettings]);
+  // Añadir soporte para gestos táctiles
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      setTouchStartX(e.touches[0].clientX);
+      setTouchStartTime(Date.now());
+      
+      // Mostrar controles al tocar
+      setShowControls(true);
+      clearTimeout(inactivityTimerRef.current);
+      resetInactivityTimer();
+    }
+  };
 
+  const handleTouchEnd = (e) => {
+    if (e.changedTouches.length === 1) {
+      const touchEndX = e.changedTouches[0].clientX;
+      const deltaX = touchEndX - touchStartX;
+      const timeDelta = Date.now() - touchStartTime;
+      
+      // Manejar deslizamientos rápidos (avance/retroceso)
+      if (Math.abs(deltaX) > 50 && timeDelta < 300) {
+        if (deltaX > 0) {
+          handleRewind();
+        } else {
+          handleForward();
+        }
+      }
+      
+      // Manejar toques simples (play/pausa)
+      else if (Math.abs(deltaX) < 10 && timeDelta < 300) {
+        handlePlayPause();
+      }
+    }
+  };
+
+  // Modificar el evento de clic para soportar toques
+  const handleContainerClick = (e) => {
+    // Evitar toggle de play/pause cuando se tocan los controles
+    if (e.target.closest('.controls-container') || 
+        e.target.closest('.settings-options') ||
+        showSettings) {
+      resetInactivityTimer();
+      return;
+    }
+    
+    // En móviles, manejamos play/pause con gestos
+    if (!isIOS()) {
+      handlePlayPause();
+    }
+  };
 
   return (
     <div
       className={`player-container ${isQualityLoading ? 'video-blur' : ''}`}
       id="player-container"
       ref={playerContainerRef}
-      onClick={(e) => {
-         // Allow clicks on controls without toggling play/pause
-         if (e.target.closest('.controls-container') || e.target.closest('.settings-options')) {
-             resetInactivityTimer(); // Keep controls visible if interacting with them
-             return;
-         }
-         handlePlayPause();
-      }}
+      onClick={handleContainerClick}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      style={getContainerStyle()} // Aplicar estilo condicional
     >
       <img src={logo2} alt="Anime Logo" className="player-logo-image" />
 
-      <video id="video-player" ref={videoRef} crossOrigin="anonymous">
+      <video id="video-player" ref={videoRef} crossOrigin="anonymous" playsInline webkit-playsinline="true">
         {/* Subtitle tracks are now added programmatically in useEffect */}
       </video>
 
-      {isMainLoading && (
+      {isMainLoading && !isIOS() && (
         <div className="loading" id="main-loading">
           <div className="loading-spinner"></div>
           <div>Cargando contenido premium...</div>
