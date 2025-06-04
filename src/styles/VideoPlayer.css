@@ -40,6 +40,7 @@
         }
         
         .player-container {
+            background-color: #000; /* Fondo negro mientras carga */
             position: relative;
             width: 100%;
             padding-top: 56.25%; /* Aspect ratio 16:9 */
@@ -51,6 +52,7 @@
         
         #video-player {
             position: absolute;
+            object-fit: contain; /* Asegura que el video se ajuste correctamente */
             top: 0;
             left: 0;
             width: 100%;
@@ -59,7 +61,10 @@
             cursor: pointer;
             transition: filter 0.3s;
         }
-        
+        /* Ocultar controles nativos en iOS */
+        video::-webkit-media-controls {
+        display: none !important;
+        }
         .player-container.video-blur #video-player {
             filter: blur(5px);
         }

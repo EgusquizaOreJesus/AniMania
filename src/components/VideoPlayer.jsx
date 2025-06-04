@@ -42,7 +42,8 @@ const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
   const [touchStartX, setTouchStartX] = useState(0);
   const [touchStartTime, setTouchStartTime] = useState(0);
   const [touchTimeout, setTouchTimeout] = useState(null);
-
+    // Nuevo estado para controlar si el video está listo
+  const [isVideoReady, setIsVideoReady] = useState(false);  
   const createPlayPauseAnimation = useCallback((icon) => {
      setPlayPauseAnim(prev => ({ icon, trigger: prev.trigger + 1 }));
   }, []);
@@ -248,13 +249,45 @@ useEffect(() => {
     setCurrentTime(0);
     setDuration(0);
     setIsPlaying(false); // Importante para que no intente auto-play en un estado inconsistente
+    setIsVideoReady(false); // Resetear estado de preparación
 
     // Destruir instancia anterior de HLS si existe
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
     }
-    if (Hls.isSupported()) {
+        // 2. Manejo específico para iOS
+    if (isIOS()) {
+      // iOS tiene soporte nativo HLS, no necesitamos hls.js
+      video.src = videoUrl;
+      
+      const handleLoadedData = () => {
+        setIsMainLoading(false);
+        setIsVideoReady(true);
+      };
+
+      const handleCanPlay = () => {
+        setIsMainLoading(false);
+        setIsVideoReady(true);
+      };
+
+      const handleError = () => {
+        setShowError(true);
+        setIsMainLoading(false);
+        setIsVideoReady(false);
+      };
+
+      video.addEventListener('loadeddata', handleLoadedData);
+      video.addEventListener('canplay', handleCanPlay);
+      video.addEventListener('error', handleError);
+
+      return () => {
+        video.removeEventListener('loadeddata', handleLoadedData);
+        video.removeEventListener('canplay', handleCanPlay);
+        video.removeEventListener('error', handleError);
+      };
+    } 
+    else if (Hls.isSupported()) {
       const hls = new Hls({
         autoStartLoad: true,
         maxBufferLength: 30,
@@ -267,6 +300,7 @@ useEffect(() => {
 
       hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
         setIsMainLoading(false);
+        setIsVideoReady(true);
         setAvailableQualities(data.levels || []);
         if (data.levels && data.levels.length > 0) setCurrentQuality(hls.currentLevel); // Or -1 for auto by default
 
@@ -305,6 +339,7 @@ useEffect(() => {
           setShowError(true);
           setIsMainLoading(false);
           setIsQualityLoading(false);
+          setIsVideoReady(false);
           // More specific error messages can be set here based on data.type / data.details
         }
       });
@@ -337,6 +372,7 @@ useEffect(() => {
     } else {
       setShowError(true);
       setIsMainLoading(false);
+      setIsVideoReady(false);
       setErrorMessage({title: "Error de compatibilidad", text: "Su navegador no soporta la reproducción de video HLS."})
     }
 
@@ -349,7 +385,21 @@ useEffect(() => {
     };
   }, [videoUrl]);
 
+  // 4. Forzar la visualización de controles en iOS al cargar
+  useEffect(() => {
+    if (isIOS() && isVideoReady) {
+      setShowControls(true);
+      resetInactivityTimer();
+    }
+  }, [isVideoReady]);
 
+    // 5. Manejar la visibilidad del contenedor
+  const getContainerStyle = () => {
+    if (isIOS() && !isVideoReady) {
+      return { display: 'none' };
+    }
+    return {};
+  };
   // Video Element Event Listeners
   useEffect(() => {
     const video = videoRef.current;
@@ -653,6 +703,7 @@ useEffect(() => {
       onClick={handleContainerClick}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      style={getContainerStyle()} // Aplicar estilo condicional
     >
       <img src={logo2} alt="Anime Logo" className="player-logo-image" />
 
@@ -660,7 +711,7 @@ useEffect(() => {
         {/* Subtitle tracks are now added programmatically in useEffect */}
       </video>
 
-      {isMainLoading && (
+      {isMainLoading && !isIOS() && (
         <div className="loading" id="main-loading">
           <div className="loading-spinner"></div>
           <div>Cargando contenido premium...</div>
