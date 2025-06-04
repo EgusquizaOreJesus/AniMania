@@ -56,8 +56,10 @@ const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
 
 useEffect(() => {
     const video = videoRef.current;
-    if (!video || !subtitleTracksConfig) return; // Añadimos verificación de videoUrl
-
+   if (!video || !videoUrl || !subtitleTracksConfig) {
+        setAvailableSubtitleTracks([]); // Limpiar si no hay config o video
+        return;
+    }
     const hls = hlsRef.current;
 
     // Función para actualizar la lista de subtítulos disponibles en la UI
@@ -216,8 +218,35 @@ useEffect(() => {
   // HLS.js setup
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !videoUrl) return;
+    // Si no hay videoUrl, limpiamos HLS y estados, y no hacemos nada más.
+    if (!video || !videoUrl) {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+      setIsMainLoading(false);
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+      setAvailableQualities([]);
+      setAvailableAudioTracks([]);
+      // No necesitamos limpiar availableSubtitleTracks aquí, el siguiente useEffect lo hará.
+      setShowError(false);
+      return;
+    }
+    // Cuando videoUrl cambia, mostramos el loading principal y reseteamos errores.
+    setIsMainLoading(true);
+    setShowError(false);
+    // También reseteamos algunos estados del video anterior.
+    setCurrentTime(0);
+    setDuration(0);
+    setIsPlaying(false); // Importante para que no intente auto-play en un estado inconsistente
 
+    // Destruir instancia anterior de HLS si existe
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
     if (Hls.isSupported()) {
       const hls = new Hls({
         autoStartLoad: true,
@@ -283,10 +312,21 @@ useEffect(() => {
         setAvailableQualities([]); // Hide quality options
         setAvailableAudioTracks([]); // Hide audio options
       });
-      video.addEventListener('error', () => {
-         setShowError(true);
-         setIsMainLoading(false);
-      });
+      const onErrorNative = () => {
+        setShowError(true);
+        setIsMainLoading(false);
+      };
+      video.addEventListener('loadedmetadata', onLoadedMetadataNative);
+      video.addEventListener('error', onErrorNative);
+      // Limpieza para listeners nativos
+      return () => {
+        video.removeEventListener('loadedmetadata', onLoadedMetadataNative);
+        video.removeEventListener('error', onErrorNative);
+        if (hlsRef.current) { // Aunque no se usó HLS.js, por si acaso
+          hlsRef.current.destroy();
+          hlsRef.current = null;
+        }
+      }
     } else {
       setShowError(true);
       setIsMainLoading(false);
@@ -296,6 +336,7 @@ useEffect(() => {
     return () => {
       if (hlsRef.current) {
         hlsRef.current.destroy();
+        hlsRef.current = null;
       }
       clearTimeout(inactivityTimerRef.current);
     };
