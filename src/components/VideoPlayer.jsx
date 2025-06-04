@@ -551,7 +551,7 @@ useEffect(() => {
     >
       <img src={logo2} alt="Anime Logo" className="player-logo-image" />
 
-      <video id="video-player" ref={videoRef} crossOrigin="anonymous">
+      <video id="video-player" ref={videoRef} crossOrigin="anonymous" playsInline webkit-playsinline="true"> 
         {/* Subtitle tracks are now added programmatically in useEffect */}
       </video>
 
