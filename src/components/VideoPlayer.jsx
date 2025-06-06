@@ -4,7 +4,6 @@ import Hls from 'hls.js';
 import logo2 from '../assets/logo2.png'; // Assuming you have a logo image in your assets
 import Controls from './Controls';
 import PlayPauseAnimation from './PlayPauseAnimation';
-import useIsMobile from '../hooks/useIsMobile'; // AÑADIDO: Importamos el nuevo hook
 
 
 const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
@@ -35,10 +34,7 @@ const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
   const [currentSubtitleTrack, setCurrentSubtitleTrack] = useState(-1); // -1 for off, index for specific track
 
   const [playPauseAnim, setPlayPauseAnim] = useState({ icon: '', trigger: 0 });
-  // AÑADIDO: Detectar si es un dispositivo móvil
-  const isMobile = useIsMobile();
-  // AÑADIDO: Estado para controlar si la reproducción ha sido iniciada por el usuario (clave para iOS)
-  const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false);
+
 
   const createPlayPauseAnimation = useCallback((icon) => {
      setPlayPauseAnim(prev => ({ icon, trigger: prev.trigger + 1 }));
@@ -57,7 +53,7 @@ const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
   }, [isPlaying, showSettings]);
 
 
-// useEffect para subtítulos
+
 useEffect(() => {
     const video = videoRef.current;
     if (!video || !subtitleTracksConfig) return; // Añadimos verificación de videoUrl
@@ -362,7 +358,6 @@ useEffect(() => {
 
   // Keyboard Shortcuts
   useEffect(() => {
-    if (isMobile) return; // AÑADIDO: No agregar listeners en móvil
     const handleKeyDown = (e) => {
       if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.isContentEditable)) {
         return;
@@ -408,16 +403,11 @@ useEffect(() => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [volume, resetInactivityTimer, isMobile]); // Add dependencies if functions use state/props from outside
+  }, [volume, resetInactivityTimer]); // Add dependencies if functions use state/props from outside
 
   // Player Actions
   const handlePlayPause = () => {
     if (!videoRef.current) return;
-
-    // AÑADIDO: Si es la primera vez que se pulsa play, marcamos que ya ha comenzado.
-    if (!hasPlaybackStarted) {
-        setHasPlaybackStarted(true);
-    }
     if (videoRef.current.paused || videoRef.current.ended) {
       videoRef.current.play().catch(err => {
          console.error("Error playing video:", err);
@@ -521,16 +511,10 @@ useEffect(() => {
   };
 
 
-  // Lógica de visibilidad de controles para móvil vs escritorio
+  // Mouse move on player container
   useEffect(() => {
      const container = playerContainerRef.current;
      if (!container) return;
-     if (isMobile) {
-        // En móvil no hay 'mouseleave' o 'mousemove'. El toque en el contenedor ya
-        // llama a `resetInactivityTimer`, que es suficiente.
-        // Los controles se ocultan por el temporizador.
-        return; 
-     }
 
      container.addEventListener('mousemove', resetInactivityTimer);
      container.addEventListener('mouseleave', () => {
@@ -548,12 +532,12 @@ useEffect(() => {
              }
          });
      }
-  }, [isPlaying, resetInactivityTimer, showSettings , isMobile]); // Dependencias para el efecto
+  }, [isPlaying, resetInactivityTimer, showSettings]);
 
 
   return (
     <div
-      className={`player-container ${isMobile ? 'mobile' : ''} ${isQualityLoading ? 'video-blur' : ''}`}
+      className={`player-container ${isQualityLoading ? 'video-blur' : ''}`}
       id="player-container"
       ref={playerContainerRef}
       onClick={(e) => {
@@ -567,17 +551,11 @@ useEffect(() => {
     >
       <img src={logo2} alt="Anime Logo" className="player-logo-image" />
 
-      {/* MODIFICADO: Añadido playsInline y webkit-playsinline para iOS */}
       <video id="video-player" ref={videoRef} crossOrigin="anonymous" playsInline webkit-playsinline="true"> 
-        {/* Los tracks de subtítulos se añaden programáticamente */}
+        {/* Subtitle tracks are now added programmatically in useEffect */}
       </video>
-      {/* AÑADIDO: Superposición de 'Tap to Play' para móviles */}
-      {!hasPlaybackStarted && isMobile && !showError && (
-        <div className="mobile-play-overlay" onClick={handlePlayPause}>
-          <i className="fas fa-play fa-4x"></i>
-        </div>
-      )}
-      {isMainLoading && !hasPlaybackStarted && ( // MODIFICADO: Ocultar si ya empezó
+
+      {isMainLoading && (
         <div className="loading" id="main-loading">
           <div className="loading-spinner"></div>
           <div>Cargando contenido premium...</div>
