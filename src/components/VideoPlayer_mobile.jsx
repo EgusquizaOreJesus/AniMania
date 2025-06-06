@@ -1,151 +1,114 @@
-// src/components/VideoPlayerMobile.jsx
-import React, { useState, useRef, useEffect } from 'react';
-import ReactPlayer from 'react-player';
-import './VideoPlayerMobile.css';
+import React, { useEffect, useRef } from 'react';
 
-const VideoPlayerMobile = ({ videoUrl, subtitleTracksConfig }) => {
-  const [showSubtitleSelector, setShowSubtitleSelector] = useState(true);
-  const [selectedSubtitle, setSelectedSubtitle] = useState(null);
-  const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [showControls, setShowControls] = useState(false);
+const VideoPlayer = () => {
+  const videoRef = useRef(null);
+  const hlsRef = useRef(null);
   const playerRef = useRef(null);
-  
-  const hasSubtitles = subtitleTracksConfig.length > 0;
 
   useEffect(() => {
-    if (!hasSubtitles) {
-      setPlaying(true);
-    }
-  }, [hasSubtitles]);
+    // Cargar scripts dinámicamente si no están disponibles
+    const loadScripts = () => {
+      return new Promise((resolve) => {
+        if (!window.Hls || !window.Plyr) {
+          const hlsScript = document.createElement('script');
+          hlsScript.src = 'https://cdn.jsdelivr.net/npm/hls.js@latest';
+          hlsScript.onload = resolve;
+          document.body.appendChild(hlsScript);
 
-  const handleSubtitleSelect = (track) => {
-    setSelectedSubtitle(track);
-    setShowSubtitleSelector(false);
-    setPlaying(true);
-  };
+          const plyrScript = document.createElement('script');
+          plyrScript.src = 'https://cdn.plyr.io/3.7.8/plyr.js';
+          document.body.appendChild(plyrScript);
 
-  const handleNoSubtitle = () => {
-    setSelectedSubtitle(null);
-    setShowSubtitleSelector(false);
-    setPlaying(true);
-  };
+          const plyrStyle = document.createElement('link');
+          plyrStyle.rel = 'stylesheet';
+          plyrStyle.href = 'https://cdn.plyr.io/3.7.8/plyr.css';
+          document.head.appendChild(plyrStyle);
+        } else {
+          resolve();
+        }
+      });
+    };
 
-  const handlePlayPause = () => {
-    setPlaying(!playing);
-    setShowControls(true);
-    // Ocultar controles después de 3 segundos
-    setTimeout(() => setShowControls(false), 3000);
-  };
+    const initializePlayer = async () => {
+      await loadScripts();
+      
+      const source = 'https://mianimecdn.b-cdn.net/Dekoboko/episodio-10/master.m3u8';
+      const video = videoRef.current;
 
-  const handleProgress = (state) => {
-    setProgress(state.played);
-  };
+      if (window.Hls.isSupported()) {
+        const hls = new window.Hls();
+        hlsRef.current = hls;
+        
+        hls.loadSource(source);
+        hls.attachMedia(video);
 
-  const handleDuration = (duration) => {
-    setDuration(duration);
-  };
+        hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+          const availableQualities = hls.levels.map(level => level.height);
+          
+          const player = new window.Plyr(video, {
+            controls: [
+              'play-large', 'restart', 'rewind', 'play', 'fast-forward',
+              'progress', 'current-time', 'duration', 'mute', 'volume',
+              'captions', 'settings', 'pip', 'airplay', 'download', 'fullscreen'
+            ],
+            quality: {
+              default: availableQualities[0],
+              options: availableQualities,
+              forced: true,
+              onChange: (quality) => updateQuality(quality, hls)
+            }
+          });
 
-  const handleSeek = (e) => {
-    const seekPosition = parseFloat(e.target.value);
-    setProgress(seekPosition);
-    playerRef.current.seekTo(seekPosition);
-  };
+          playerRef.current = player;
+        });
+      }
+    };
 
-  const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
-  };
+    const updateQuality = (quality, hls) => {
+      hls.levels.forEach((level, index) => {
+        if (level.height === quality) {
+          hls.currentLevel = index;
+        }
+      });
+    };
 
-  const subtitleConfig = selectedSubtitle
-    ? [{
-        kind: 'subtitles',
-        src: selectedSubtitle.src,
-        srcLang: selectedSubtitle.srclang,
-        label: selectedSubtitle.label,
-        default: true,
-      }]
-    : [];
+    initializePlayer();
+
+    // Limpieza al desmontar
+    return () => {
+      if (playerRef.current) {
+        playerRef.current.destroy();
+      }
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+      }
+    };
+  }, []);
 
   return (
-    <div className="mobile-player-container">
-      {showSubtitleSelector && (
-        <div className="subtitle-modal">
-          <div className="modal-content">
-            <h3>Seleccionar subtítulos</h3>
-            <div className="subtitle-options">
-              {subtitleTracksConfig.map((track) => (
-                <button
-                  key={track.src}
-                  className="subtitle-option"
-                  onClick={() => handleSubtitleSelect(track)}
-                >
-                  {track.label}
-                </button>
-              ))}
-              <button
-                className="subtitle-option no-subtitle"
-                onClick={handleNoSubtitle}
-              >
-                Sin subtítulos
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="video-wrapper" onClick={() => setShowControls(!showControls)}>
-        <ReactPlayer
-          ref={playerRef}
-          url={videoUrl}
-          playing={playing}
-          width="100%"
-          height="100%"
-          playsinline
-          onProgress={handleProgress}
-          onDuration={handleDuration}
-          config={{
-            file: {
-              attributes: {
-                crossOrigin: 'anonymous'
-              },
-              tracks: subtitleConfig
-            }
-          }}
+    <div style={{ height: '400px', maxWidth: '100%', margin: '0 auto' }}>
+      <video 
+        ref={videoRef} 
+        controls 
+        crossOrigin="anonymous"
+        playsInline
+      >
+        <track
+          kind="captions"
+          label="Español"
+          srcLang="es"
+          src="https://mianimecdn.b-cdn.net/Dekoboko/episodio-10/sub_spa_es.vtt"
+          default
         />
-        
-        {!playing && (
-          <button className="play-button" onClick={handlePlayPause}>
-            ▶
-          </button>
-        )}
-        
-        {(showControls || !playing) && (
-          <div className="video-controls">
-            <button className="control-button" onClick={handlePlayPause}>
-              {playing ? '⏸' : '▶'}
-            </button>
-            
-            <div className="progress-container">
-              <span className="time-display">{formatTime(progress * duration)}</span>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step="any"
-                value={progress}
-                onChange={handleSeek}
-                className="progress-bar"
-              />
-              <span className="time-display">{formatTime(duration)}</span>
-            </div>
-          </div>
-        )}
-      </div>
+        <track
+          kind="captions"
+          label="English"
+          srcLang="en"
+          src="https://mianimecdn.b-cdn.net/Dekoboko/episodio-10/sub_eng.vtt"
+        />
+      </video>
     </div>
   );
 };
 
-export default VideoPlayerMobile;
+export default VideoPlayer;
