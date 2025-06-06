@@ -499,3 +499,48 @@
                 min-width: 160px;
             }
         }
+
+        /* Estilos para móviles */
+.player-container.mobile {
+  position: relative;
+  width: 100%;
+  height: 0;
+  padding-top: 56.25%; /* 16:9 Aspect Ratio */
+}
+
+.player-container.mobile #video-player {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.ios-play-help {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 15px 25px;
+  border-radius: 10px;
+  text-align: center;
+  z-index: 10;
+  font-size: 1.2rem;
+}
+
+/* Controles más grandes en móviles */
+.mobile .controls-container {
+  padding: 12px;
+  font-size: 1.1rem;
+}
+
+.mobile .progress-bar {
+  height: 8px;
+}
+
+.mobile .volume-slider {
+  width: 100px;
+}
