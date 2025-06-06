@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Hls from 'hls.js';
 import logo2 from '../assets/logo2.png';
-
-// PASO 1: Importar los iconos desde la librería react-icons
 import {
   FiPlay,
   FiPause,
   FiMaximize,
   FiMinimize,
   FiRewind,
-  FiMessageSquare, // Icono para subtítulos
+  FiMessageSquare,
 } from 'react-icons/fi';
 
 const VideoPlayerMobile = ({ videoUrl, subtitleTracksConfig = [] }) => {
@@ -37,7 +35,6 @@ const VideoPlayerMobile = ({ videoUrl, subtitleTracksConfig = [] }) => {
   const [currentSubtitleTrack, setCurrentSubtitleTrack] = useState(-1);
   const [showSubtitleMenu, setShowSubtitleMenu] = useState(false);
 
-  // --- (TODA TU LÓGICA DE USEEFFECT Y CALLBACKS VA AQUÍ, SIN CAMBIOS) ---
   // Gestión de controles táctiles
   const hideControlsTimer = useCallback(() => {
     clearTimeout(controlsTimerRef.current);
@@ -174,6 +171,7 @@ const VideoPlayerMobile = ({ videoUrl, subtitleTracksConfig = [] }) => {
     }
     showControlsTemporarily();
   };
+  
   const handleSeek = (e) => {
     e.stopPropagation();
     const video = videoRef.current;
@@ -183,6 +181,7 @@ const VideoPlayerMobile = ({ videoUrl, subtitleTracksConfig = [] }) => {
     const seekTime = (clickX / rect.width) * duration;
     if (video && isFinite(duration)) { video.currentTime = seekTime; }
   };
+  
   const handleFullscreenToggle = (e) => {
     e.stopPropagation();
     const elem = playerContainerRef.current;
@@ -193,33 +192,47 @@ const VideoPlayerMobile = ({ videoUrl, subtitleTracksConfig = [] }) => {
     }
     showControlsTemporarily();
   };
+  
   const handleSubtitleToggle = (e) => {
     e.stopPropagation();
     setShowSubtitleMenu(prev => !prev);
     hideControlsTimer();
   };
+  
   const handleSubtitleSelect = (e, trackIndex) => {
     e.stopPropagation();
     setCurrentSubtitleTrack(trackIndex);
     setShowSubtitleMenu(false);
     showControlsTemporarily();
   };
-  const handleTapToggle = () => {
+  
+  const handleTapToggle = useCallback(() => {
+    // Si el menú de subtítulos está abierto, al tocar se cierra
     if (showSubtitleMenu) {
-        setShowSubtitleMenu(false);
-        showControlsTemporarily();
-        return;
+      setShowSubtitleMenu(false);
+      showControlsTemporarily();
+      return;
     }
+    
+    // En pantalla completa, al tocar se muestran los controles
+    if (isFullscreen) {
+      setShowControls(prev => !prev);
+      hideControlsTimer();
+      return;
+    }
+
+    // Para pantalla normal, comportamiento original
     if (tapTimerRef.current) {
-        clearTimeout(tapTimerRef.current);
-        tapTimerRef.current = null;
+      clearTimeout(tapTimerRef.current);
+      tapTimerRef.current = null;
     } else {
-        tapTimerRef.current = setTimeout(() => {
-            tapTimerRef.current = null;
-            setShowControls(prev => !prev);
-        }, 200);
+      tapTimerRef.current = setTimeout(() => {
+        tapTimerRef.current = null;
+        setShowControls(prev => !prev);
+      }, 200);
     }
-  };
+  }, [showSubtitleMenu, isFullscreen, hideControlsTimer, showControlsTemporarily]);
+  
   const formatTime = (time) => {
     if (isNaN(time) || time === 0) return "0:00";
     const minutes = Math.floor(time / 60);
@@ -230,63 +243,104 @@ const VideoPlayerMobile = ({ videoUrl, subtitleTracksConfig = [] }) => {
   return (
     <div className="mobile-player-container" ref={playerContainerRef} onClick={handleTapToggle}>
       <div className="video-wrapper">
-        <video ref={videoRef} className="video-element" playsInline crossOrigin="anonymous">
+        <video 
+          ref={videoRef} 
+          className="video-element" 
+          playsInline 
+          webkit-playsinline="true"
+          crossOrigin="anonymous"
+        >
           {subtitleTracksConfig.map((track) => (
-            <track key={track.src} kind="subtitles" label={track.label} srcLang={track.srclang} src={track.src} default={track.default}/>
+            <track 
+              key={track.src} 
+              kind="subtitles" 
+              label={track.label} 
+              srcLang={track.srclang} 
+              src={track.src} 
+              default={track.default}
+            />
           ))}
         </video>
       </div>
+      
       <div className={`overlay logo-overlay ${showControls ? 'visible' : ''}`}>
-          <img src={logo2} alt="Logo"/>
+        <img src={logo2} alt="Logo"/>
       </div>
+      
       {isLoading && (
         <div className="overlay spinner-overlay">
           <div className="spinner" />
         </div>
       )}
+      
       {showError && (
         <div className="overlay error-overlay">
           <div className="error-icon">⚠️</div>
           <div>{errorMessage}</div>
         </div>
       )}
-      <div className={`overlay controls-overlay ${showControls ? 'visible' : ''}`} onClick={(e) => e.stopPropagation()}>
+      
+      <div 
+        className={`overlay controls-overlay ${showControls ? 'visible' : ''}`} 
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="center-controls">
-            {!isLoading && (
-                <button className="center-button" onClick={handlePlayPause}>
-                    {isFinished ? <FiRewind /> : isPlaying ? <FiPause /> : <FiPlay />}
-                </button>
-            )}
+          {!isLoading && (
+            <button className="center-button" onClick={handlePlayPause}>
+              {isFinished ? <FiRewind /> : isPlaying ? <FiPause /> : <FiPlay />}
+            </button>
+          )}
         </div>
+        
         <div className="bottom-controls">
           <div className="progress-bar-wrapper" onClick={handleSeek}>
             <div className="progress-bar">
-                <div className="progress-bar-bg" />
-                <div className="progress-bar-filled" style={{ transform: `scaleX(${(currentTime / duration) || 0})` }} />
-                <div className="progress-bar-thumb" style={{ left: `calc(${(currentTime / duration) * 100 || 0}% - 8px)` }}/>
+              <div className="progress-bar-bg" />
+              <div 
+                className="progress-bar-filled" 
+                style={{ transform: `scaleX(${(currentTime / duration) || 0})` }} 
+              />
+              <div 
+                className="progress-bar-thumb" 
+                style={{ left: `calc(${(currentTime / duration) * 100 || 0}% - 8px)` }}
+              />
             </div>
           </div>
+          
           <div className="controls-row">
-            <span className="time-display">{formatTime(currentTime)} / {formatTime(duration)}</span>
+            <span className="time-display">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
             <div className="spacer" />
             {availableSubtitleTracks.length > 0 && (
-                <button className={`icon-button ${currentSubtitleTrack !== -1 ? 'active' : ''}`} onClick={handleSubtitleToggle}>
-                    <FiMessageSquare />
-                </button>
+              <button 
+                className={`icon-button ${currentSubtitleTrack !== -1 ? 'active' : ''}`} 
+                onClick={handleSubtitleToggle}
+              >
+                <FiMessageSquare />
+              </button>
             )}
             <button className="icon-button" onClick={handleFullscreenToggle}>
               {isFullscreen ? <FiMinimize /> : <FiMaximize />}
             </button>
           </div>
         </div>
+        
         {showSubtitleMenu && (
           <div className="subtitle-menu">
             <ul>
-              <li className={currentSubtitleTrack === -1 ? 'active' : ''} onClick={(e) => handleSubtitleSelect(e, -1)}>
+              <li 
+                className={currentSubtitleTrack === -1 ? 'active' : ''} 
+                onClick={(e) => handleSubtitleSelect(e, -1)}
+              >
                 Desactivado
               </li>
               {availableSubtitleTracks.map((track, index) => (
-                <li key={index} className={currentSubtitleTrack === index ? 'active' : ''} onClick={(e) => handleSubtitleSelect(e, index)}>
+                <li 
+                  key={index} 
+                  className={currentSubtitleTrack === index ? 'active' : ''} 
+                  onClick={(e) => handleSubtitleSelect(e, index)}
+                >
                   {track.label}
                 </li>
               ))}
@@ -295,7 +349,7 @@ const VideoPlayerMobile = ({ videoUrl, subtitleTracksConfig = [] }) => {
         )}
       </div>
 
-      <style jsx={true}>{`
+      <style jsx>{`
         .mobile-player-container {
           position: relative;
           width: 100%;
@@ -346,72 +400,228 @@ const VideoPlayerMobile = ({ videoUrl, subtitleTracksConfig = [] }) => {
           width: 100%;
           height: 100%;
         }
-        :global(.mobile-player-container:fullscreen .video-element),
-        :global(.mobile-player-container:-webkit-full-screen .video-element),
-        :global(.mobile-player-container:-moz-full-screen .video-element) {
-          object-fit: contain; /* Asegura que el video se vea completo */
-        }
-
+        
         /* --- Overlays --- */
         .overlay {
-          position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-          display: flex; align-items: center; justify-content: center;
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           transition: opacity 0.3s ease;
-          pointer-events: none; opacity: 0;
+          pointer-events: none;
+          opacity: 0;
         }
-        .overlay.visible { opacity: 1; }
-        .logo-overlay { justify-content: flex-start; align-items: flex-start; padding: 15px; }
-        .logo-overlay img { width: 60px; }
-        .spinner-overlay, .error-overlay {
-          background-color: rgba(0, 0, 0, 0.7);
-          flex-direction: column; z-index: 20;
-          pointer-events: auto; opacity: 1;
-        }
-        .spinner {
-          width: 40px; height: 40px; border: 4px solid rgba(255, 255, 255, 0.2);
-          border-top-color: #fff; border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
-        .error-icon { font-size: 32px; margin-bottom: 10px; }
-        .controls-overlay {
-          background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 30%, transparent 70%, rgba(0,0,0,0.4) 100%);
-          flex-direction: column; z-index: 10;
+        .overlay.visible {
+          opacity: 1;
           pointer-events: auto;
         }
-        .center-controls { flex-grow: 1; display: flex; justify-content: center; align-items: center; }
+        
+        .logo-overlay {
+          justify-content: flex-start;
+          align-items: flex-start;
+          padding: 15px;
+          z-index: 5;
+        }
+        .logo-overlay img {
+          width: 60px;
+        }
+        
+        .spinner-overlay, .error-overlay {
+          background-color: rgba(0, 0, 0, 0.7);
+          flex-direction: column;
+          z-index: 20;
+          pointer-events: auto;
+          opacity: 1;
+        }
+        
+        .spinner {
+          width: 40px;
+          height: 40px;
+          border: 4px solid rgba(255, 255, 255, 0.2);
+          border-top-color: #fff;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+        
+        .error-icon {
+          font-size: 32px;
+          margin-bottom: 10px;
+        }
+        
+        .controls-overlay {
+          background: linear-gradient(
+            to top,
+            rgba(0, 0, 0, 0.7) 0%,
+            transparent 30%,
+            transparent 70%,
+            rgba(0, 0, 0, 0.4) 100%
+          );
+          flex-direction: column;
+          z-index: 10;
+        }
+        
+        .center-controls {
+          flex-grow: 1;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          pointer-events: none;
+        }
+        
         .center-button {
-          background: rgba(30, 30, 30, 0.6); border: none; color: white;
-          border-radius: 50%; width: 64px; height: 64px;
-          display: flex; justify-content: center; align-items: center;
-          cursor: pointer; backdrop-filter: blur(5px);
+          background: rgba(30, 30, 30, 0.6);
+          border: none;
+          color: white;
+          border-radius: 50%;
+          width: 64px;
+          height: 64px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          cursor: pointer;
+          backdrop-filter: blur(5px);
           transition: transform 0.2s;
+          pointer-events: auto;
         }
-        .center-button:active { transform: scale(0.9); }
-        .center-button :global(svg) { font-size: 36px; }
-
-        .bottom-controls { width: 100%; padding: 10px 15px 15px; box-sizing: border-box; }
-        .progress-bar-wrapper { width: 100%; height: 16px; display: flex; align-items: center; cursor: pointer; margin-bottom: 5px; }
-        .progress-bar { width: 100%; height: 4px; position: relative; display: flex; align-items: center; }
-        .progress-bar-bg { position: absolute; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.3); border-radius: 2px; }
-        .progress-bar-filled { background-color: #3B82F6; width: 100%; height: 100%; border-radius: 2px; transform-origin: left; position: relative; z-index: 1; }
-        .progress-bar-thumb { position: absolute; width: 16px; height: 16px; background-color: #fff; border-radius: 50%; z-index: 2; pointer-events: none; }
-        .controls-row { display: flex; align-items: center; width: 100%; }
-        .time-display { font-size: 13px; font-weight: 500; text-shadow: 1px 1px 2px rgba(0,0,0,0.7); }
-        .spacer { flex-grow: 1; }
-        .icon-button { background: none; border: none; color: white; padding: 0; margin-left: 16px; cursor: pointer; }
-        .icon-button :global(svg) { font-size: 24px; filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.7)); }
-        .icon-button.active { color: #3B82F6; }
-
+        
+        .center-button:active {
+          transform: scale(0.9);
+        }
+        
+        .center-button svg {
+          font-size: 36px;
+        }
+        
+        .bottom-controls {
+          width: 100%;
+          padding: 10px 15px 15px;
+          box-sizing: border-box;
+        }
+        
+        .progress-bar-wrapper {
+          width: 100%;
+          height: 16px;
+          display: flex;
+          align-items: center;
+          cursor: pointer;
+          margin-bottom: 5px;
+        }
+        
+        .progress-bar {
+          width: 100%;
+          height: 4px;
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+        
+        .progress-bar-bg {
+          position: absolute;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(255, 255, 255, 0.3);
+          border-radius: 2px;
+        }
+        
+        .progress-bar-filled {
+          background-color: #3b82f6;
+          width: 100%;
+          height: 100%;
+          border-radius: 2px;
+          transform-origin: left;
+          position: relative;
+          z-index: 1;
+        }
+        
+        .progress-bar-thumb {
+          position: absolute;
+          width: 16px;
+          height: 16px;
+          background-color: #fff;
+          border-radius: 50%;
+          z-index: 2;
+          pointer-events: none;
+        }
+        
+        .controls-row {
+          display: flex;
+          align-items: center;
+          width: 100%;
+        }
+        
+        .time-display {
+          font-size: 13px;
+          font-weight: 500;
+          text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+        }
+        
+        .spacer {
+          flex-grow: 1;
+        }
+        
+        .icon-button {
+          background: none;
+          border: none;
+          color: white;
+          padding: 0;
+          margin-left: 16px;
+          cursor: pointer;
+        }
+        
+        .icon-button svg {
+          font-size: 24px;
+          filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.7));
+        }
+        
+        .icon-button.active {
+          color: #3b82f6;
+        }
+        
         .subtitle-menu {
-          position: absolute; bottom: 75px; right: 15px;
-          background-color: rgba(20, 20, 20, 0.9); backdrop-filter: blur(8px);
-          border-radius: 8px; z-index: 30; max-height: 200px; overflow-y: auto;
+          position: absolute;
+          bottom: 75px;
+          right: 15px;
+          background-color: rgba(20, 20, 20, 0.9);
+          backdrop-filter: blur(8px);
+          border-radius: 8px;
+          z-index: 30;
+          max-height: 200px;
+          overflow-y: auto;
+          pointer-events: auto;
         }
-        .subtitle-menu ul { list-style: none; padding: 8px; margin: 0; }
-        .subtitle-menu li { padding: 10px 16px; cursor: pointer; font-size: 15px; white-space: nowrap; border-radius: 4px; }
-        .subtitle-menu li:hover { background-color: rgba(255, 255, 255, 0.1); }
-        .subtitle-menu li.active { color: #3B82F6; font-weight: bold; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .subtitle-menu ul {
+          list-style: none;
+          padding: 8px;
+          margin: 0;
+        }
+        
+        .subtitle-menu li {
+          padding: 10px 16px;
+          cursor: pointer;
+          font-size: 15px;
+          white-space: nowrap;
+          border-radius: 4px;
+        }
+        
+        .subtitle-menu li:hover {
+          background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .subtitle-menu li.active {
+          color: #3b82f6;
+          font-weight: bold;
+        }
+        
+        @keyframes spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
       `}</style>
     </div>
   );
