@@ -1,30 +1,24 @@
 // src/components/VideoPlayer.jsx
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Hls from 'hls.js';
-import logo2 from '../assets/logo2.png';
+import logo2 from '../assets/logo2.png'; // Assuming you have a logo image in your assets
 import Controls from './Controls';
 import PlayPauseAnimation from './PlayPauseAnimation';
+import useIsMobile from '../hooks/useIsMobile'; // AÑADIDO: Importamos el nuevo hook
 
-// Función para detectar dispositivos móviles
-const isMobileDevice = () => {
-  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-    navigator.userAgent
-  );
-};
 
 const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
   const videoRef = useRef(null);
   const playerContainerRef = useRef(null);
   const hlsRef = useRef(null);
   const inactivityTimerRef = useRef(null);
-  const [isMobile, setIsMobile] = useState(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isScreenFull, setIsScreenFull] = useState(false);
+  const [isScreenFull, setIsScreenFull] = useState(false); // Renamed
 
   const [showControls, setShowControls] = useState(true);
   const [isMainLoading, setIsMainLoading] = useState(true);
@@ -34,53 +28,52 @@ const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
 
   const [showSettings, setShowSettings] = useState(false);
   const [availableQualities, setAvailableQualities] = useState([]);
-  const [currentQuality, setCurrentQuality] = useState(-1);
+  const [currentQuality, setCurrentQuality] = useState(-1); // -1 for auto
   const [availableAudioTracks, setAvailableAudioTracks] = useState([]);
-  const [currentAudioTrack, setCurrentAudioTrack] = useState(0);
+  const [currentAudioTrack, setCurrentAudioTrack] = useState(0); // Default or first track
   const [availableSubtitleTracks, setAvailableSubtitleTracks] = useState([]);
-  const [currentSubtitleTrack, setCurrentSubtitleTrack] = useState(-1);
+  const [currentSubtitleTrack, setCurrentSubtitleTrack] = useState(-1); // -1 for off, index for specific track
 
   const [playPauseAnim, setPlayPauseAnim] = useState({ icon: '', trigger: 0 });
-
-  // Detectar si es dispositivo móvil al montar
-  useEffect(() => {
-    setIsMobile(isMobileDevice());
-    
-    // Silenciar automáticamente en iOS para permitir reproducción
-    if (isMobileDevice() && videoRef.current) {
-      videoRef.current.muted = true;
-      setIsMuted(true);
-    }
-  }, []);
+  // AÑADIDO: Detectar si es un dispositivo móvil
+  const isMobile = useIsMobile();
+  // AÑADIDO: Estado para controlar si la reproducción ha sido iniciada por el usuario (clave para iOS)
+  const [hasPlaybackStarted, setHasPlaybackStarted] = useState(false);
 
   const createPlayPauseAnimation = useCallback((icon) => {
      setPlayPauseAnim(prev => ({ icon, trigger: prev.trigger + 1 }));
   }, []);
 
+
   const resetInactivityTimer = useCallback(() => {
     setShowControls(true);
     clearTimeout(inactivityTimerRef.current);
-    
-    // No ocultar controles en dispositivos móviles
-    if (isPlaying && !showSettings) {
+    if (isPlaying && !showSettings) { // Don't hide if settings are open
       inactivityTimerRef.current = setTimeout(() => {
+        //console.log('Timer fired: Hiding controls now'); // <-- Añade esto para depurar
         setShowControls(false);
       }, 3000);
     }
   }, [isPlaying, showSettings]);
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video || !subtitleTracksConfig) return;
 
+// useEffect para subtítulos
+useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !subtitleTracksConfig) return; // Añadimos verificación de videoUrl
+
+    const hls = hlsRef.current;
+
+    // Función para actualizar la lista de subtítulos disponibles en la UI
     const updateAvailableSubtitles = () => {
         if (!video || !video.textTracks) return;
 
         const rawTracks = Array.from(video.textTracks);
         const uniqueUiTracks = [];
-        const seenTracks = new Set();
+        const seenTracks = new Set(); // Para identificar tracks únicos por label y lang
 
         rawTracks.forEach((track, index) => {
+            // Solo procesar tracks de subtítulos o captions
             if (track.kind !== 'subtitles' && track.kind !== 'captions') {
                 return;
             }
@@ -89,33 +82,46 @@ const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
             if (!seenTracks.has(identifier)) {
                 seenTracks.add(identifier);
                 uniqueUiTracks.push({
-                    label: track.label || `Track ${index + 1}`,
+                    label: track.label || `Track ${index + 1}`, // Usar un label genérico si no hay
                     lang: track.language,
-                    id: index,
-                    mode: track.mode,
+                    id: index, // Este 'id' es el índice real en video.textTracks
+                    mode: track.mode, // El modo actual real del TextTrack
                 });
             }
         });
 
         setAvailableSubtitleTracks(uniqueUiTracks);
 
+        // Lógica para determinar el subtítulo activo inicial o actual
+        // Esta parte es delicada y puede necesitar ajustes según cómo HLS.js establece los tracks por defecto.
         let activeTrackIndexInUiList = -1;
+
+        // 1. Buscar si ya hay un track activo ('showing')
         const currentlyShowingTrackOriginalIndex = rawTracks.findIndex(rt => rt.mode === 'showing' && (rt.kind === 'subtitles' || rt.kind === 'captions'));
 
         if (currentlyShowingTrackOriginalIndex !== -1) {
+            // Encontrar este track en nuestra lista de UI (uniqueUiTracks)
             activeTrackIndexInUiList = uniqueUiTracks.findIndex(uit => uit.id === currentlyShowingTrackOriginalIndex);
         } else {
+            // 2. Si no hay ninguno 'showing', buscar el 'default' de nuestra config manual
             const defaultConfigTrack = subtitleTracksConfig.find(conf => conf.default);
             if (defaultConfigTrack) {
+                // Encontrar el track correspondiente en la lista de UI
                 activeTrackIndexInUiList = uniqueUiTracks.findIndex(uit => uit.label === defaultConfigTrack.label && uit.lang === defaultConfigTrack.srclang);
             }
         }
         
+        // Si el currentSubtitleTrack actual ya no es válido o es -1 y encontramos uno activo/default
         if (currentSubtitleTrack === -1 || currentSubtitleTrack >= uniqueUiTracks.length) {
             setCurrentSubtitleTrack(activeTrackIndexInUiList !== -1 ? activeTrackIndexInUiList : -1);
+        } else {
+            // Si ya había un currentSubtitleTrack válido, verificar si sigue siendo el que está 'showing'
+            // y si no, actualizarlo. No, esto lo hará el siguiente useEffect.
+            // Aquí solo establecemos el available y el initial si es necesario.
         }
     };
 
+    // Añadir tracks de SUBTITLE_TRACKS_CONFIG si no existen ya
     subtitleTracksConfig.forEach(config => {
         let trackExists = false;
         if (video.textTracks) {
@@ -127,9 +133,12 @@ const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
                 }
             }
         }
+        // También se puede verificar si ya existe un elemento <track> con el mismo src.
+        // Esta comprobación es menos fiable si HLS.js añade tracks sin src visible en el DOM <track>
         if (video.querySelector(`track[src="${config.src}"]`)) {
             trackExists = true;
         }
+
 
         if (!trackExists) {
             const trackElement = document.createElement('track');
@@ -139,21 +148,26 @@ const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
             trackElement.src = config.src;
             trackElement.default = config.default || false;
             video.appendChild(trackElement);
+            // No llamamos a updateAvailableSubtitles() aquí directamente,
+            // lo haremos con onaddtrack o un timeout general.
         }
     });
 
+    // Event listeners para actualizar la lista cuando cambien los tracks
     if (video.textTracks) {
         video.textTracks.addEventListener('addtrack', updateAvailableSubtitles);
         video.textTracks.addEventListener('removetrack', updateAvailableSubtitles);
+        // 'change' es importante si HLS.js cambia el modo de un track
         video.textTracks.addEventListener('change', updateAvailableSubtitles);
     }
 
-    const hls = hlsRef.current;
     if (hls) {
-        hls.on(Hls.Events.SUBTITLE_TRACK_LOADED, updateAvailableSubtitles);
-        hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, updateAvailableSubtitles);
+        // Estos eventos son cuando HLS.js maneja tracks que no son parte del stream nativo del video
+        hls.on(Hls.Events.SUBTITLE_TRACK_LOADED, updateAvailableSubtitles); // Cuando un track se carga
+        hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, updateAvailableSubtitles); // Cuando la lista de tracks de HLS cambia
     }
 
+    // Llamada inicial para poblar la lista, después de un breve delay para que los tracks se registren
     const initialLoadTimeoutId = setTimeout(updateAvailableSubtitles, 250);
 
     return () => {
@@ -168,11 +182,14 @@ const VideoPlayer = ({ videoUrl, subtitleTracksConfig = [] }) => {
             hls.off(Hls.Events.SUBTITLE_TRACKS_UPDATED, updateAvailableSubtitles);
         }
     };
-}, [subtitleTracksConfig]);
+}, [subtitleTracksConfig]); // Se ejecuta principalmente al montar. Las actualizaciones vienen de los event listeners.
 
+// Este SEGUNDO useEffect se encarga de APLICAR el modo 'showing'/'hidden'
+// basado en la selección del usuario (currentSubtitleTrack)
 useEffect(() => {
     const video = videoRef.current;
     if (!video || !video.textTracks || availableSubtitleTracks.length === 0) {
+        // Si no hay video, tracks, o la lista de UI está vacía, desactivar todos (si hay tracks reales)
         if (video && video.textTracks) {
             Array.from(video.textTracks).forEach(track => {
                  if (track.kind === 'subtitles' || track.kind === 'captions') track.mode = 'hidden';
@@ -180,6 +197,9 @@ useEffect(() => {
         }
         return;
     }
+
+    // currentSubtitleTrack es el ÍNDICE en la lista `availableSubtitleTracks`
+    // `availableSubtitleTracks[currentSubtitleTrack].id` es el ÍNDICE REAL en `video.textTracks`
 
     Array.from(video.textTracks).forEach((actualVideoTrack, realIndexInVideo) => {
         if (actualVideoTrack.kind !== 'subtitles' && actualVideoTrack.kind !== 'captions') {
@@ -195,28 +215,21 @@ useEffect(() => {
         actualVideoTrack.mode = shouldBeShowing ? 'showing' : 'hidden';
     });
 
-}, [currentSubtitleTrack, availableSubtitleTracks]);
+}, [currentSubtitleTrack, availableSubtitleTracks]); // Depende de la selección del usuario y de la lista disponible
 
   // HLS.js setup
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !videoUrl) return;
-    
-    // Configuración específica para móviles
-    if (isMobile) {
-      video.style.objectFit = 'contain';
-      video.style.width = '100%';
-      video.style.height = 'auto';
-      video.style.maxHeight = '100vh';
-    }
-
     if (video.canPlayType('application/vnd.apple.mpegurl')){
-          video.src = videoUrl;
+          video.src = videoUrl; // Use the videoUrl prop directly
           video.addEventListener('loadedmetadata', () => {
             setIsMainLoading(false);
+            // Native HLS might not expose quality/audio track selection easily
+            // Consider hiding these options for Safari native HLS
             console.warn("Reproducción HLS nativa. Selección de calidad/audio limitada.");
-            setAvailableQualities([]);
-            setAvailableAudioTracks([]);
+            setAvailableQualities([]); // Hide quality options
+            setAvailableAudioTracks([]); // Hide audio options
           });
           video.addEventListener('error', () => {
             setShowError(true);
@@ -230,14 +243,14 @@ useEffect(() => {
         maxMaxBufferLength: 60,
         enableWorker: true
       });
-      hls.loadSource(videoUrl);
+      hls.loadSource(videoUrl); // Usamos la prop videoUrl
       hls.attachMedia(video);
       hlsRef.current = hls;
 
       hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
         setIsMainLoading(false);
         setAvailableQualities(data.levels || []);
-        if (data.levels && data.levels.length > 0) setCurrentQuality(hls.currentLevel);
+        if (data.levels && data.levels.length > 0) setCurrentQuality(hls.currentLevel); // Or -1 for auto by default
 
         setAvailableAudioTracks(hls.audioTracks || []);
         if (hls.audioTracks && hls.audioTracks.length > 0) setCurrentAudioTrack(hls.audioTrack);
@@ -267,12 +280,14 @@ useEffect(() => {
          setCurrentAudioTrack(data.id);
       });
 
+
       hls.on(Hls.Events.ERROR, (event, data) => {
         console.error('HLS Error:', data);
         if (data.fatal) {
           setShowError(true);
           setIsMainLoading(false);
           setIsQualityLoading(false);
+          // More specific error messages can be set here based on data.type / data.details
         }
       });
 
@@ -288,7 +303,8 @@ useEffect(() => {
       }
       clearTimeout(inactivityTimerRef.current);
     };
-  }, [videoUrl, isMobile]);
+  }, [videoUrl]);
+
 
   // Video Element Event Listeners
   useEffect(() => {
@@ -297,21 +313,9 @@ useEffect(() => {
 
     const handleTimeUpdate = () => setCurrentTime(video.currentTime);
     const handleDurationChange = () => setDuration(video.duration);
-    const handlePlay = () => { 
-      setIsPlaying(true); 
-      resetInactivityTimer();
-      // Forzar silencio solo en iOS para primera reproducción
-      if (/iPhone|iPad|iPod/i.test(navigator.userAgent) && !isMuted) {
-        video.muted = true;
-        setIsMuted(true);
-      }
-    };
-    const handlePause = () => { 
-      setIsPlaying(false); 
-      clearTimeout(inactivityTimerRef.current); 
-      setShowControls(true); 
-    };
-    const handleEnded = () => { setIsPlaying(false); setShowControls(true); };
+    const handlePlay = () => { setIsPlaying(true); resetInactivityTimer();};
+    const handlePause = () => { setIsPlaying(false); clearTimeout(inactivityTimerRef.current); setShowControls(true); };
+    const handleEnded = () => { setIsPlaying(false); setShowControls(true); /* Maybe show replay icon */};
     const handleVolumeChange = () => {
         setVolume(video.volume);
         setIsMuted(video.muted);
@@ -319,11 +323,12 @@ useEffect(() => {
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('durationchange', handleDurationChange);
-    video.addEventListener('loadedmetadata', handleDurationChange);
+    video.addEventListener('loadedmetadata', handleDurationChange); // For initial duration
     video.addEventListener('play', handlePlay);
     video.addEventListener('pause', handlePause);
     video.addEventListener('ended', handleEnded);
     video.addEventListener('volumechange', handleVolumeChange);
+
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
@@ -334,16 +339,18 @@ useEffect(() => {
       video.removeEventListener('ended', handleEnded);
       video.removeEventListener('volumechange', handleVolumeChange);
     };
-  }, [resetInactivityTimer, isMuted]);
+  }, [resetInactivityTimer]);
 
   // Fullscreen change listener
   useEffect(() => {
      const container = playerContainerRef.current;
      const handleFullscreenChange = () => {
          setIsScreenFull(!!document.fullscreenElement);
+         // Update button icon if needed (handled in Controls component based on isScreenFull prop)
      };
 
      document.addEventListener('fullscreenchange', handleFullscreenChange);
+     // For webkit browsers
      document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
 
      return () => {
@@ -352,15 +359,15 @@ useEffect(() => {
      };
  }, []);
 
-  // Keyboard Shortcuts (solo en escritorio)
-  useEffect(() => {
-    if (isMobile) return; // No aplicar atajos de teclado en móviles
 
+  // Keyboard Shortcuts
+  useEffect(() => {
+    if (isMobile) return; // AÑADIDO: No agregar listeners en móvil
     const handleKeyDown = (e) => {
       if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.isContentEditable)) {
         return;
       }
-      resetInactivityTimer();
+      resetInactivityTimer(); // Show controls on any relevant key press
 
       switch (e.code) {
         case 'Space':
@@ -391,6 +398,7 @@ useEffect(() => {
           e.preventDefault();
           handleMuteToggle();
           break;
+        // 'KeyC' for subtitles - usually handled by browser default or player UI
         default:
           break;
       }
@@ -400,43 +408,26 @@ useEffect(() => {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [volume, resetInactivityTimer, isMobile]);
+  }, [volume, resetInactivityTimer, isMobile]); // Add dependencies if functions use state/props from outside
 
   // Player Actions
   const handlePlayPause = () => {
     if (!videoRef.current) return;
-    
-    // Comportamiento especial para iOS
-    if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-      if (videoRef.current.paused) {
-        videoRef.current.play().catch(err => {
-          console.error("iOS play error:", err);
-          // Mostrar mensaje de ayuda si falla
-          setErrorMessage({
-            title: "Error en iOS",
-            text: "Por favor toque la pantalla para iniciar la reproducción"
-          });
-          setShowError(true);
-        });
-        createPlayPauseAnimation('pause');
-      } else {
-        videoRef.current.pause();
-        createPlayPauseAnimation('play');
-      }
-    } else {
-      // Comportamiento normal para otros dispositivos
-      if (videoRef.current.paused || videoRef.current.ended) {
-        videoRef.current.play().catch(err => {
-          console.error("Error playing video:", err);
-          setShowError(true);
-        });
-        createPlayPauseAnimation('pause');
-      } else {
-        videoRef.current.pause();
-        createPlayPauseAnimation('play');
-      }
+
+    // AÑADIDO: Si es la primera vez que se pulsa play, marcamos que ya ha comenzado.
+    if (!hasPlaybackStarted) {
+        setHasPlaybackStarted(true);
     }
-    
+    if (videoRef.current.paused || videoRef.current.ended) {
+      videoRef.current.play().catch(err => {
+         console.error("Error playing video:", err);
+         setShowError(true);
+      });
+      createPlayPauseAnimation('pause');
+    } else {
+      videoRef.current.pause();
+      createPlayPauseAnimation('play');
+    }
     resetInactivityTimer();
   };
 
@@ -458,6 +449,7 @@ useEffect(() => {
     if (!videoRef.current) return;
     videoRef.current.volume = newVolume;
     videoRef.current.muted = newVolume === 0;
+    // State updates (volume, isMuted) will be handled by the 'volumechange' event listener on video
     resetInactivityTimer();
   };
 
@@ -466,8 +458,9 @@ useEffect(() => {
     const newMuted = !videoRef.current.muted;
     videoRef.current.muted = newMuted;
     if (!newMuted && videoRef.current.volume === 0) {
-      videoRef.current.volume = 0.1;
+      videoRef.current.volume = 0.1; // Unmute to a low volume if it was 0
     }
+    // State updates handled by 'volumechange' listener
     resetInactivityTimer();
   };
 
@@ -484,28 +477,30 @@ useEffect(() => {
      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
          if (elem.requestFullscreen) {
              elem.requestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message}`));
-         } else if (elem.webkitRequestFullscreen) {
+         } else if (elem.webkitRequestFullscreen) { /* Safari */
              elem.webkitRequestFullscreen().catch(err => console.error(`Fullscreen error: ${err.message}`));
          }
      } else {
          if (document.exitFullscreen) {
              document.exitFullscreen();
-         } else if (document.webkitExitFullscreen) {
+         } else if (document.webkitExitFullscreen) { /* Safari */
              document.webkitExitFullscreen();
          }
      }
      resetInactivityTimer();
  };
 
+
   const handleSettingsToggle = () => {
      setShowSettings(prev => !prev);
-     if (!showSettings) {
-         clearTimeout(inactivityTimerRef.current);
+     if (!showSettings) { // If opening settings
+         clearTimeout(inactivityTimerRef.current); // Keep controls visible
          setShowControls(true);
-     } else {
+     } else { // If closing settings
          resetInactivityTimer();
      }
  };
+
 
   const handleSettingChange = (type, value) => {
      if (type === 'quality') {
@@ -516,70 +511,73 @@ useEffect(() => {
      } else if (type === 'audio') {
          if (hlsRef.current) {
              hlsRef.current.audioTrack = parseInt(value);
+             // setCurrentAudioTrack will be updated by HLS event AUDIO_TRACK_SWITCHED
          }
      } else if (type === 'subtitles') {
-          setCurrentSubtitleTrack(parseInt(value));
+          setCurrentSubtitleTrack(parseInt(value)); // This will trigger the useEffect to update track modes
      }
+     // Settings menu will close itself via its own logic or prop
+     // resetInactivityTimer(); // Ensure controls eventually hide
   };
 
-  // Eventos de ratón y táctiles
+
+  // Lógica de visibilidad de controles para móvil vs escritorio
   useEffect(() => {
      const container = playerContainerRef.current;
      if (!container) return;
-
-     const handleTouchMove = () => resetInactivityTimer();
-     const handleTouchEnd = () => {
-        if (isPlaying && !showSettings) {
-          inactivityTimerRef.current = setTimeout(() => setShowControls(false), 2000);
-        }
-     };
+     if (isMobile) {
+        // En móvil no hay 'mouseleave' o 'mousemove'. El toque en el contenedor ya
+        // llama a `resetInactivityTimer`, que es suficiente.
+        // Los controles se ocultan por el temporizador.
+        return; 
+     }
 
      container.addEventListener('mousemove', resetInactivityTimer);
-     container.addEventListener('touchmove', handleTouchMove);
-     container.addEventListener('touchend', handleTouchEnd);
+     container.addEventListener('mouseleave', () => {
+         if (isPlaying && !showSettings) { // Only hide if playing and settings are not open
+             inactivityTimerRef.current = setTimeout(() => setShowControls(false), 1000);
+         }
+     });
 
      return () => {
          container.removeEventListener('mousemove', resetInactivityTimer);
-         container.removeEventListener('touchmove', handleTouchMove);
-         container.removeEventListener('touchend', handleTouchEnd);
-     };
-  }, [isPlaying, resetInactivityTimer, showSettings]);
+         // eslint-disable-next-line react-hooks/exhaustive-deps
+         container.removeEventListener('mouseleave', () => {
+              if (isPlaying && !showSettings) {
+                 inactivityTimerRef.current = setTimeout(() => setShowControls(false), 1000);
+             }
+         });
+     }
+  }, [isPlaying, resetInactivityTimer, showSettings , isMobile]); // Dependencias para el efecto
+
 
   return (
     <div
-      className={`player-container ${isQualityLoading ? 'video-blur' : ''} ${isMobile ? 'mobile' : ''}`}
+      className={`player-container ${isMobile ? 'mobile' : ''} ${isQualityLoading ? 'video-blur' : ''}`}
       id="player-container"
       ref={playerContainerRef}
       onClick={(e) => {
+         // Allow clicks on controls without toggling play/pause
          if (e.target.closest('.controls-container') || e.target.closest('.settings-options')) {
-             resetInactivityTimer();
+             resetInactivityTimer(); // Keep controls visible if interacting with them
              return;
          }
-         
-         // Comportamiento especial para iOS
-         if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-           if (!isPlaying) {
-             handlePlayPause();
-           }
-         } else {
-           handlePlayPause();
-         }
+         handlePlayPause();
       }}
     >
       <img src={logo2} alt="Anime Logo" className="player-logo-image" />
 
-      <video 
-        id="video-player" 
-        ref={videoRef} 
-        crossOrigin="anonymous" 
-        playsInline 
-        webkit-playsinline="true"
-        muted={isMobile} // Silenciado por defecto en móviles
-      >
-        {/* Subtítulos se añaden programáticamente */}
+      {/* MODIFICADO: Añadido playsInline y webkit-playsinline para iOS */}
+      <video id="video-player" ref={videoRef} crossOrigin="anonymous" playsInline webkit-playsinline="true"> 
+        {/* Los tracks de subtítulos se añaden programáticamente */}
       </video>
-
-      {isMainLoading && (
+      {/* AÑADIDO: Superposición de 'Tap to Play' para móviles */}
+      {!hasPlaybackStarted && isMobile && !showError && (
+        <div className="mobile-play-overlay" onClick={handlePlayPause}>
+          <i className="fas fa-play fa-4x"></i>
+        </div>
+      )}
+      {isMainLoading && !hasPlaybackStarted && ( // MODIFICADO: Ocultar si ya empezó
         <div className="loading" id="main-loading">
           <div className="loading-spinner"></div>
           <div>Cargando contenido premium...</div>
@@ -601,14 +599,8 @@ useEffect(() => {
         </div>
       )}
 
-      <PlayPauseAnimation icon={playPauseAnim.icon} trigger={playPauseAnim.trigger} />
+     <PlayPauseAnimation icon={playPauseAnim.icon} trigger={playPauseAnim.trigger} />
 
-      {/* Mensaje para iOS */}
-      {/iPhone|iPad|iPod/i.test(navigator.userAgent) && !isPlaying && !showError && (
-        <div className="ios-play-help">
-          <p>Toque la pantalla para comenzar la reproducción</p>
-        </div>
-      )}
 
       <Controls
         videoRef={videoRef}
@@ -636,9 +628,12 @@ useEffect(() => {
         availableQualities={availableQualities}
         availableAudioTracks={availableAudioTracks}
         availableSubtitleTracks={availableSubtitleTracks}
-        hideControls={!showControls && isPlaying && !isMobile} // Siempre mostrar controles en móvil
-        isMobile={isMobile}
+        hideControls={!showControls && isPlaying} // Controls visibility logic
       />
+       {/* Shortcuts info can be added here if needed, conditionally rendered */}
+       {/* <div className="shortcuts-info">
+           <span>Space</span> Play/Pause | <span>F</span> Fullscreen | ...
+       </div> */}
     </div>
   );
 };
