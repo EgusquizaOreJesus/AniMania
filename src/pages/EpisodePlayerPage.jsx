@@ -68,6 +68,7 @@ const EpisodePlayerPage = () => {
           // Si es móvil, usa el reproductor simple y robusto
           <VideoPlayerMobile 
             videoUrl={videoUrl} 
+            subtitleTracksConfig={subtitleTracksConfig}
           />
         ) : (
           // Si es escritorio, usa tu reproductor original con todas sus funciones
