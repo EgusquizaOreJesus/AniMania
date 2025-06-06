@@ -1,12 +1,41 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 const VideoPlayer = () => {
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
   const playerRef = useRef(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Manejar cambio de orientación
+  useEffect(() => {
+    const handleOrientationChange = () => {
+      if (!playerRef.current) return;
+      
+      // Forzar pantalla completa al rotar a horizontal
+      if (window.orientation === 90 || window.orientation === -90) {
+        if (!document.fullscreenElement) {
+          playerRef.current.fullscreen.enter();
+        }
+      } else {
+        if (document.fullscreenElement) {
+          playerRef.current.fullscreen.exit();
+        }
+      }
+    };
+
+    // Escuchar eventos de orientación y pantalla completa
+    window.addEventListener('orientationchange', handleOrientationChange);
+    document.addEventListener('fullscreenchange', () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    });
+
+    return () => {
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      document.removeEventListener('fullscreenchange', () => {});
+    };
+  }, []);
 
   useEffect(() => {
-    // Cargar scripts dinámicamente si no están disponibles
     const loadScripts = () => {
       return new Promise((resolve) => {
         if (!window.Hls || !window.Plyr) {
@@ -56,10 +85,18 @@ const VideoPlayer = () => {
               options: availableQualities,
               forced: true,
               onChange: (quality) => updateQuality(quality, hls)
+            },
+            fullscreen: {
+              iosNative: true,  // Habilitar pantalla completa nativa en iOS
+              container: isFullscreen ? null : undefined
             }
           });
 
           playerRef.current = player;
+          
+          // Manejar pantalla completa manualmente en iOS
+          player.on('enterfullscreen', () => setIsFullscreen(true));
+          player.on('exitfullscreen', () => setIsFullscreen(false));
         });
       }
     };
@@ -74,7 +111,6 @@ const VideoPlayer = () => {
 
     initializePlayer();
 
-    // Limpieza al desmontar
     return () => {
       if (playerRef.current) {
         playerRef.current.destroy();
@@ -83,15 +119,27 @@ const VideoPlayer = () => {
         hlsRef.current.destroy();
       }
     };
-  }, []);
+  }, [isFullscreen]);
 
   return (
-    <div style={{ height: '400px', maxWidth: '100%', margin: '0 auto' }}>
+    <div style={{
+      height: isFullscreen ? '100vh' : '400px',
+      width: '100%',
+      maxWidth: '100%',
+      margin: '0 auto',
+      overflow: 'hidden',
+      backgroundColor: '#000'
+    }}>
       <video 
         ref={videoRef} 
         controls 
         crossOrigin="anonymous"
         playsInline
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain'
+        }}
       >
         <track
           kind="captions"
