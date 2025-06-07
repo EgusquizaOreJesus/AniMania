@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import VideoPlayerOriginal from '../components/VideoPlayer_original.jsx'; 
 // El nuevo reproductor con ReactPlayer para móviles
 import VideoPlayerMobile from '../components/VideoPlayer_mobile.jsx';
+import SubtitlesSelector from '../components/SubtitlesSelector.jsx';
 
 
 const EpisodePlayerPage = () => {
