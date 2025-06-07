@@ -2,53 +2,90 @@ import React, { useRef, useEffect } from 'react';
 import videojs from 'video.js';
 import 'video.js/dist/video-js.css';
 
-const VideoPlayerMobile = ({ videoUrl, subtitleTracksConfig }) => {
+const VideoPlayerMobile = ({ videoUrl, subtitleUrl }) => {
   const videoRef = useRef(null);
   const playerRef = useRef(null);
-  const subtitles = subtitleTracksConfig[0].src; // Asumiendo que siempre hay al menos un track de subtítulos
+  const containerRef = useRef(null);
+
   useEffect(() => {
-  let mounted = true;
+    // Verificar que el componente está montado
+    if (!containerRef.current || !videoRef.current) return;
 
-  if (videoRef.current && !playerRef.current) {
-    // Esperar al siguiente ciclo de render
-    requestAnimationFrame(() => {
-      if (!mounted) return;
+    const initPlayer = () => {
+      // Destruir player existente si hay uno
+      if (playerRef.current) {
+        playerRef.current.dispose();
+        playerRef.current = null;
+      }
 
-      playerRef.current = videojs(videoRef.current, {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      
+      // Configuración básica
+      const options = {
         controls: true,
-        responsive: true,
         fluid: true,
+        autoplay: false, // Desactivar autoplay para iOS
+        playsinline: true, // Importante para iOS
         preload: 'auto',
-        sources: [
-          {
-            src: videoUrl,
-            type: 'application/x-mpegURL',
+        sources: [{
+          src: videoUrl,
+          type: isIOS ? 'application/vnd.apple.mpegURL' : 'application/x-mpegURL'
+        }],
+        html5: {
+          vhs: {
+            overrideNative: isIOS,
+            enableLowInitialPlaylist: true
           },
-        ],
-        tracks: [
-          {
-            kind: 'subtitles',
-            src: subtitles,
-            srcLang: 'es',
-            label: 'Español',
-            default: true,
-          },
-        ],
-      });
-    });
-  }
+          nativeAudioTracks: false,
+          nativeVideoTracks: false
+        }
+      };
 
-  return () => {
-    mounted = false;
-    if (playerRef.current) {
-      playerRef.current.dispose();
-      playerRef.current = null;
-    }
-  };
-}, [videoUrl, subtitles]);
+      // Añadir subtítulos si están disponibles
+      if (subtitleUrl) {
+        options.tracks = [{
+          kind: 'subtitles',
+          src: subtitleUrl,
+          srcLang: 'es',
+          label: 'Español',
+          default: true
+        }];
+      }
+
+      // Inicializar el reproductor
+      playerRef.current = videojs(videoRef.current, options, function() {
+        console.log('Reproductor inicializado correctamente');
+        
+        // Manejar errores
+        this.on('error', () => {
+          const error = this.error();
+          console.error('VideoJS Error:', error);
+          if (error && error.code === 4) {
+            console.warn('Posible problema de CORS o formato no soportado');
+          }
+        });
+      });
+    };
+
+    // Esperar a que el elemento esté completamente en el DOM
+    const timer = setTimeout(initPlayer, 100);
+    
+    return () => {
+      clearTimeout(timer);
+      if (playerRef.current) {
+        playerRef.current.dispose();
+      }
+    };
+  }, [videoUrl, subtitleUrl]);
+
   return (
-    <div data-vjs-player>
-      <video ref={videoRef} className="video-js vjs-default-skin" playsInline />
+    <div ref={containerRef} data-vjs-player style={{ width: '100%', aspectRatio: '16/9' }}>
+      <video 
+        ref={videoRef} 
+        className="video-js vjs-default-skin"
+        playsInline
+        webkit-playsinline="true"
+      />
     </div>
   );
 };

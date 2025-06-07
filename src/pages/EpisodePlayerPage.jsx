@@ -66,9 +66,9 @@ const EpisodePlayerPage = () => {
         // --- LÓGICA CONDICIONAL PARA CAMBIAR DE REPRODUCTOR ---
         isMobile ? (
           // Si es móvil, usa el reproductor simple y robusto
-          <VideoPlayerMobile 
-            videoUrl={videoUrl} 
-            subtitleTracksConfig={subtitleTracksConfig}
+          <SubtitlesSelector
+            videoUrl={videoUrl}
+            subtitleOptions={subtitleTracksConfig}
           />
         ) : (
           // Si es escritorio, usa tu reproductor original con todas sus funciones
