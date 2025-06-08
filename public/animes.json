@@ -14,5 +14,13 @@
     "image": "/images/Atri.jpg",
     "description": "En un mundo donde la humanidad ha sido casi aniquilada, un joven encuentra a Atri, una IA que lo ayuda a sobrevivir.",
     "episodes": 13
+  },
+  {
+    "id":3,
+    "slug": "KanojoMoKanojo",
+    "title": "Kanojo mo Kanojo Season 2",
+    "image": "/images/KanojoMoKanojo.jpg",
+    "description": "Naoya, Saki y Nagisa enfrentan nuevos desafíos en su relación poliamorosa.",
+    "episodes": 12
   }
 ]

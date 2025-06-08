@@ -1,0 +1,77 @@
+{
+    "id": 3,
+    "episodes":[
+        {
+            "number": 1,
+            "title": "El dilema de Naoya",
+            "image": "/images/portada_caps.jpg",
+            "description": "Naoya se enfrenta a la difícil decisión de equilibrar su relación con Saki y Nagisa."
+        },
+        {
+            "number": 2,
+            "title": "La cita sorpresa",
+            "image": "/images/portada_caps.jpg",
+            "description": "Saki organiza una cita sorpresa para Naoya, pero las cosas no salen como esperaba."
+        },
+        {
+            "number": 3,
+            "title": "El malentendido",
+            "image": "/images/portada_caps.jpg",
+            "description": "Un malentendido entre Saki y Nagisa pone a prueba la relación poliamorosa."
+        },
+        {
+            "number": 4,
+            "title": "La competencia amistosa",
+            "image": "/images/portada_caps.jpg",
+            "description": "Naoya organiza una competencia amistosa entre Saki y Nagisa para ver quién lo conoce mejor."
+        },
+        {
+            "number": 5,
+            "title": "El viaje inesperado",
+            "image": "/images/portada_caps.jpg",
+            "description": "Un viaje inesperado lleva a Naoya, Saki y Nagisa a una aventura inolvidable."
+        },
+        {
+            "number": 6,
+            "title": "El día de descanso",
+            "image": "/images/portada_caps.jpg",
+            "description": "Naoya intenta pasar un día tranquilo con Saki y Nagisa, pero surgen complicaciones."
+        },
+        {
+            "number": 7,
+            "title": "La fiesta de cumpleaños de Naoya",
+            "image": "/images/portada_caps.jpg",
+            "description": "Saki y Nagisa organizan una fiesta sorpresa para el cumpleaños de Naoya."
+        },
+        {
+            "number": 8,
+            "title": "El desafío del amor",
+            "image": "/images/portada_caps.jpg",
+            "description": "Naoya debe superar un desafío que pondrá a prueba su amor por Saki y Nagisa."
+        },
+        {
+            "number" : 9,
+            "title": "El encuentro con los padres",
+            "image": "/images/portada_caps.jpg",
+            "description": "Naoya, Saki y Nagisa se encuentran con los padres de Naoya, lo que lleva a situaciones incómodas."
+        },
+        {
+            "number": 10,
+            "title": "El final del triángulo amoroso",
+            "image": "/images/portada_caps.jpg",
+            "description": "Naoya, Saki y Nagisa enfrentan el desafío final de su relación poliamorosa."
+        },
+        {
+            "number": 11,
+            "title": "La reconciliación",
+            "image": "/images/portada_caps.jpg",
+            "description": "Después de una serie de malentendidos, Naoya, Saki y Nagisa encuentran la manera de reconciliarse."
+        },
+        {
+            "number": 12,
+            "title": "El futuro juntos",
+            "image": "/images/portada_caps.jpg",
+            "description": "Naoya, Saki y Nagisa reflexionan sobre su relación y planean su futuro juntos."
+        }
+    ]
+}
